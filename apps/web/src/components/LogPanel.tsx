@@ -3,7 +3,7 @@ import type { StepLog, Turn } from '@harness/shared/events';
 import { clip, summarizeToolOutput } from '@harness/shared/format';
 import { json, money, tokens } from '../format.js';
 
-function Step({ step }: { step: StepLog }) {
+export function Step({ step }: { step: StepLog }) {
   return (
     <div className="step">
       <div className="step-index">[lượt {step.index}]</div>

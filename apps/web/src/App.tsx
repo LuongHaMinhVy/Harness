@@ -1,108 +1,67 @@
-import { useEffect, useReducer, useState } from 'react';
-import type { EventEnvelope, StateSnapshot } from '@harness/shared/events';
-import { api, connectEvents } from './api.js';
-import { useAction } from './hooks.js';
-import { ChatPanel } from './components/ChatPanel.js';
-import { EvalPanel } from './components/EvalPanel.js';
-import { GradesTable } from './components/GradesTable.js';
-import { LogPanel } from './components/LogPanel.js';
-import { applyEnvelope, applySnapshot, initialUi, type UiState } from './uiState.js';
+// Định tuyến: đăng nhập, đổi mật khẩu, khu học viên / giảng viên / admin (admin dùng được cả khu giảng viên).
+import { lazy, Suspense } from 'react';
+import { Navigate, Route, Routes } from 'react-router';
+import { HomeRedirect, RequireAuth, RequireRole } from './auth.js';
+import { Layout } from './components/Layout.js';
+import { Loading } from './components/ui.js';
+import { AuditPage } from './pages/admin/AuditPage.js';
+import { HarnessPage } from './pages/admin/HarnessPage.js';
+import { UsersPage } from './pages/admin/UsersPage.js';
+import { ChangePasswordPage } from './pages/ChangePasswordPage.js';
+import { LoginPage } from './pages/LoginPage.js';
+import { NotFoundPage } from './pages/NotFoundPage.js';
+import { StudentAssignmentDetailPage } from './pages/student/AssignmentDetailPage.js';
+import { StudentAssignmentsPage } from './pages/student/AssignmentsPage.js';
+import { AssignmentFormPage } from './pages/teacher/AssignmentFormPage.js';
+import { TeacherAssignmentsPage } from './pages/teacher/AssignmentsPage.js';
+import { ClassesPage } from './pages/teacher/ClassesPage.js';
+import { SubmissionDetailPage } from './pages/teacher/SubmissionDetailPage.js';
+import { SubmissionsPage } from './pages/teacher/SubmissionsPage.js';
+import { TeacherSection } from './pages/teacher/TeacherSection.js';
 
-type Action =
-  | { kind: 'snapshot'; snap: StateSnapshot }
-  | { kind: 'envelope'; env: EventEnvelope }
-  | { kind: 'connected'; value: boolean };
-
-function uiReducer(ui: UiState, a: Action): UiState {
-  switch (a.kind) {
-    case 'snapshot':
-      return applySnapshot(ui, a.snap);
-    case 'envelope':
-      return applyEnvelope(ui, a.env);
-    case 'connected':
-      return { ...ui, connected: a.value };
-  }
-}
-
-type Tab = 'grade' | 'eval' | 'grades';
-const TABS: { id: Tab; label: string }[] = [
-  { id: 'grade', label: 'Chấm bài' },
-  { id: 'eval', label: 'Đánh giá' },
-  { id: 'grades', label: 'Bảng điểm' },
-];
+// Trang chi tiết lớp dùng parseStudentCsv (kéo theo zod) — tách chunk riêng để bundle chính nhẹ.
+const ClassDetailPage = lazy(() => import('./pages/teacher/ClassDetailPage.js').then((m) => ({ default: m.ClassDetailPage })));
 
 export function App() {
-  const [ui, dispatch] = useReducer(uiReducer, initialUi);
-  const [tab, setTab] = useState<Tab>('grade');
-  const [notice, setNotice] = useState<string | null>(null);
-
-  useEffect(
-    () =>
-      connectEvents({
-        onOpen: () => dispatch({ kind: 'connected', value: true }),
-        onError: () => dispatch({ kind: 'connected', value: false }),
-        onSnapshot: (snap) => dispatch({ kind: 'snapshot', snap }),
-        onEnvelope: (env) => dispatch({ kind: 'envelope', env }),
-      }),
-    [],
-  );
-
-  const ask = useAction(api.ask, setNotice);
-  const approve = useAction(api.approve, setNotice);
-  const settings = useAction(api.settings, setNotice);
-  const reset = useAction(api.reset, setNotice);
-  const runEval = useAction(api.runEval, setNotice);
-
-  const snap = ui.snap;
   return (
-    <div className="app">
-      <header className="topbar">
-        <h1>Trợ lý chấm bài · sum-array</h1>
-        <nav className="tabs" role="tablist">
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              role="tab"
-              aria-selected={tab === t.id}
-              className={tab === t.id ? 'tab active' : 'tab'}
-              onClick={() => setTab(t.id)}
-            >
-              {t.label}
-            </button>
-          ))}
-        </nav>
-        <span className={ui.connected ? 'status online' : 'status offline'}>
-          {ui.connected ? '●' : '○'} {snap?.model ?? '…'}
-        </span>
-      </header>
-
-      {notice && (
-        <div className="notice" role="alert">
-          {notice}
-          <button className="link" onClick={() => setNotice(null)}>
-            Đóng
-          </button>
-        </div>
-      )}
-
-      {!snap ? (
-        <p className="empty">Đang kết nối tới server…</p>
-      ) : tab === 'grade' ? (
-        <main className="grade-layout">
-          <ChatPanel
-            snap={snap}
-            onAsk={ask}
-            onApprove={approve}
-            onSettings={settings}
-            onReset={reset}
-          />
-          <LogPanel turns={snap.turns} />
-        </main>
-      ) : tab === 'eval' ? (
-        <EvalPanel evalState={snap.eval} busy={snap.busy} onRun={runEval} />
-      ) : (
-        <GradesTable version={ui.gradesVersion} />
-      )}
-    </div>
+    <Routes>
+      <Route path="/dang-nhap" element={<LoginPage />} />
+      <Route element={<RequireAuth />}>
+        <Route path="/doi-mat-khau" element={<ChangePasswordPage />} />
+        <Route index element={<HomeRedirect />} />
+        <Route element={<Layout />}>
+          <Route path="/hoc-vien" element={<RequireRole roles={['student']} />}>
+            <Route index element={<StudentAssignmentsPage />} />
+            <Route path="bai-tap/:id" element={<StudentAssignmentDetailPage />} />
+          </Route>
+          <Route path="/giang-vien" element={<RequireRole roles={['teacher', 'admin']} />}>
+            <Route element={<TeacherSection />}>
+              <Route index element={<Navigate to="lop-hoc" replace />} />
+              <Route path="lop-hoc" element={<ClassesPage />} />
+              <Route
+                path="lop-hoc/:id"
+                element={
+                  <Suspense fallback={<Loading />}>
+                    <ClassDetailPage />
+                  </Suspense>
+                }
+              />
+              <Route path="de-bai" element={<TeacherAssignmentsPage />} />
+              <Route path="de-bai/moi" element={<AssignmentFormPage />} />
+              <Route path="de-bai/:id" element={<SubmissionsPage />} />
+              <Route path="de-bai/:id/sua" element={<AssignmentFormPage />} />
+              <Route path="bai-nop/:id" element={<SubmissionDetailPage />} />
+            </Route>
+          </Route>
+          <Route path="/admin" element={<RequireRole roles={['admin']} />}>
+            <Route index element={<Navigate to="tai-khoan" replace />} />
+            <Route path="tai-khoan" element={<UsersPage />} />
+            <Route path="nhat-ky" element={<AuditPage />} />
+            <Route path="harness" element={<HarnessPage />} />
+          </Route>
+          <Route path="*" element={<NotFoundPage />} />
+        </Route>
+      </Route>
+    </Routes>
   );
 }

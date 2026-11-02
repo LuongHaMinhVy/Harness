@@ -1,9 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
-import { api } from '../api.js';
+import { harnessApi } from '../api.js';
+import { qk } from '../queryKeys.js';
 
 // version tăng mỗi khi có điểm mới được lưu (sự kiện grade-saved) hoặc snapshot mới → TanStack Query tải lại bảng.
 export function GradesTable({ version }: { version: number }) {
-  const { data: grades, error, isPending } = useQuery({ queryKey: ['grades', version], queryFn: api.grades });
+  const { data: grades, error, isPending } = useQuery({ queryKey: qk.harnessGrades(version), queryFn: harnessApi.grades });
 
   return (
     <section className="panel page" aria-label="Bảng điểm">
