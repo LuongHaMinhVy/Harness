@@ -48,6 +48,21 @@ test('học viên không tồn tại → student_not_found, không hỏi duyệt
   expect(approve).not.toHaveBeenCalled();
 });
 
+test('createConsoleApprover: 2 yêu cầu cùng lúc được hỏi lần lượt, không chồng nhau', async () => {
+  let active = 0;
+  let maxActive = 0;
+  const approve = createConsoleApprover(async () => {
+    active++;
+    maxActive = Math.max(maxActive, active);
+    await new Promise((r) => setTimeout(r, 20));
+    active--;
+    return 'y';
+  });
+  const results = await Promise.all([approve(req), approve({ ...req, student: 'lan' })]);
+  expect(results).toEqual([true, true]);
+  expect(maxActive).toBe(1);
+});
+
 test('createConsoleApprover: "Y" → true, "n" → false, "" → false', async () => {
   const answers = ['Y', 'n', ''];
   const prompts: string[] = [];
