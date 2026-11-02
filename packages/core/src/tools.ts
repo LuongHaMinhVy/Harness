@@ -3,7 +3,7 @@ import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { tool } from 'ai';
 import { z } from 'zod';
 import type { Approver, GradeRequest } from './approval.js';
-import { runSubmission } from './sandbox.js';
+import { RUNNER_ID, runSubmission } from './sandbox.js';
 import type { TestCache } from './toolCache.js';
 
 const MAX_FILE_CHARS = 20_000;
@@ -180,8 +180,8 @@ export function createTools(deps: ToolDeps) {
         const s = locator.locate(assignment, student);
         const entry = join(s.dir, s.entry);
         const testsFile = join(root, 'assignments', name, 'tests.js');
-        // Key gồm mọi file của bài nộp (theo thứ tự) + bộ test: sửa bất kỳ file nào là chạy lại.
-        const source = s.files.map((f) => `${f}\0${readFileSync(join(s.dir, f), 'utf8')}`).join('\0');
+        // Key gồm phiên bản runner + mọi file của bài nộp (theo thứ tự) + bộ test: sửa bất kỳ thứ gì là chạy lại.
+        const source = [`runner:${RUNNER_ID}`, ...s.files.map((f) => `${f}\0${readFileSync(join(s.dir, f), 'utf8')}`)].join('\0');
         const key = deps.cache.key(source, readFileSync(testsFile, 'utf8'));
         const hit = deps.cache.get(key);
         if (hit) return { ...hit, cached: true, durationMs: 0, cacheKey: key.slice(0, 4) };

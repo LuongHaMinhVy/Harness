@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import type { Readable, Writable } from 'node:stream';
 import { dirname, resolve } from 'node:path';
@@ -20,6 +20,9 @@ export type RunOptions = {
 
 const RUNNER = fileURLToPath(new URL('./test-runner.cts', import.meta.url));
 const MAX_OUTPUT_BYTES = 1024 * 1024;
+
+/** Dấu vân tay của runner: đưa vào khoá cache để sửa runner thì kết quả cũ trong cache hết hiệu lực. */
+export const RUNNER_ID = createHash('sha256').update(readFileSync(RUNNER)).digest('hex').slice(0, 12);
 const MEMORY_MB = 64;
 
 // Chạy bộ test với bài nộp trong một tiến trình con bị cô lập bằng Permission Model của Node:
