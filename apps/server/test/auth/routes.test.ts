@@ -35,6 +35,15 @@ test('đăng nhập đúng → cookie HttpOnly, SameSite=Strict, Path=/; /me tr�
   expect(JSON.stringify(me)).not.toMatch(/scrypt|passwordHash/);
 });
 
+test('admin tạo từ ADMIN_EMAIL đăng nhập bằng email (không phân biệt hoa thường), email dài hơn 40 ký tự vẫn được', async () => {
+  const { ctx, login, get } = await setup();
+  const email = 'quan.tri.vien.he.thong.lop.hoc@truong-thpt-demo.edu.vn';
+  ctx.users.create({ username: email, fullName: 'Quản trị', role: 'admin', passwordHash: await hashPassword('mat-khau-rieng-1') });
+  const { res, cookie } = await login(email.toUpperCase(), 'mat-khau-rieng-1');
+  expect(res.status).toBe(200);
+  expect((await (await get('/api/auth/me', cookie)).json()).user).toMatchObject({ username: email, role: 'admin' });
+});
+
 test('sai mật khẩu và sai tên đăng nhập → cùng 401 với cùng thông báo', async () => {
   const { login } = await setup();
   const wrongPass = await login('nam', 'sai-mat-khau');

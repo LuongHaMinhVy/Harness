@@ -42,8 +42,8 @@ export function LoginPage() {
             Kết nối chưa được mã hoá — mật khẩu có thể bị đọc trên mạng.
           </div>
         )}
-        <Field label="Tên đăng nhập">
-          <input value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="username" autoFocus maxLength={40} required />
+        <Field label="Tên đăng nhập hoặc email">
+          <input value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="username" autoFocus maxLength={100} required />
         </Field>
         <Field label="Mật khẩu">
           <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" maxLength={128} required />

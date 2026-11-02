@@ -40,8 +40,12 @@ Tạo API key miễn phí tại <https://aistudio.google.com/apikey> và điền
 
 ## Chạy web lớp học
 
+Tạo admin đầu tiên — chọn một trong hai cách:
+
+- Đặt `ADMIN_EMAIL` và `ADMIN_PASSWORD` trong `.env` rồi chạy `pnpm seed:demo` (tạo admin đăng nhập bằng email + dữ liệu demo). Tạo xong nên xoá `ADMIN_PASSWORD` khỏi `.env`.
+- Hoặc `pnpm admin:create quantri "Quản trị"`: in mật khẩu tạm, bắt đổi ở lần đăng nhập đầu.
+
 ```bash
-pnpm admin:create quantri "Quản trị"   # tạo admin đầu tiên, in mật khẩu tạm (bắt đổi lần đầu)
 pnpm web                               # http://127.0.0.1:3000 — chỉ máy này truy cập được
 ```
 
@@ -51,7 +55,7 @@ Thử giao diện khi chưa có API key (model giả, database riêng `data/app-
 pnpm web:mock
 ```
 
-Dữ liệu demo cho database thật (giảng viên `gv.demo`, lớp, 5 học viên, đề `sum-array`, 5 bài nộp): `pnpm seed:demo`.
+Dữ liệu demo cho database thật (admin từ `ADMIN_EMAIL`/`ADMIN_PASSWORD` nếu có, giảng viên `gv.demo`, lớp, 5 học viên, đề `sum-array`, 5 bài nộp): `pnpm seed:demo`.
 
 ### Luồng sử dụng
 

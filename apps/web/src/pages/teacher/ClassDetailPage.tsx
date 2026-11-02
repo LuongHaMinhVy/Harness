@@ -205,8 +205,8 @@ function SingleAdd({ onAdd, pending }: { onAdd: (row: Row, done: () => void) => 
   return (
     <Card title="Thêm một học viên">
       <form className="stack-form" onSubmit={submit}>
-        <Field label="Tên đăng nhập" hint="Chữ không dấu, số và . _ -">
-          <input value={username} onChange={(e) => setUsername(e.target.value)} maxLength={40} required />
+        <Field label="Tên đăng nhập" hint="Email, hoặc chữ không dấu, số và . _ -">
+          <input value={username} onChange={(e) => setUsername(e.target.value)} maxLength={100} required />
         </Field>
         <Field label="Họ tên">
           <input value={fullName} onChange={(e) => setFullName(e.target.value)} maxLength={100} required />

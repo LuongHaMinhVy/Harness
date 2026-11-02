@@ -137,8 +137,8 @@ function CreateUser({ onCreated }: { onCreated: (r: { username: string; password
   return (
     <Card title="Tạo tài khoản giảng viên / quản trị">
       <form className="form-grid" onSubmit={submit}>
-        <Field label="Tên đăng nhập" hint="Chữ không dấu, số và . _ -">
-          <input value={username} onChange={(e) => setUsername(e.target.value)} maxLength={40} required autoComplete="off" />
+        <Field label="Tên đăng nhập" hint="Email, hoặc chữ không dấu, số và . _ -">
+          <input value={username} onChange={(e) => setUsername(e.target.value)} maxLength={100} required autoComplete="off" />
         </Field>
         <Field label="Họ tên">
           <input value={fullName} onChange={(e) => setFullName(e.target.value)} maxLength={100} required autoComplete="off" />

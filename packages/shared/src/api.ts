@@ -21,15 +21,24 @@ export const PASSWORD_MIN = 8;
 export const PASSWORD_MAX = 128;
 
 export const PasswordSchema = z.string().min(PASSWORD_MIN, `Mật khẩu tối thiểu ${PASSWORD_MIN} ký tự`).max(PASSWORD_MAX);
+export const USERNAME_MAX = 100;
+// Tên đăng nhập dùng làm tên thư mục bài nộp: bắt đầu và kết thúc bằng chữ/số (không ".", "..", không dấu chấm cuối).
+const PLAIN_USERNAME = /^[a-zA-Z0-9](?:[a-zA-Z0-9._-]*[a-zA-Z0-9])?$/;
+// Hoặc là email (vd. admin tạo từ ADMIN_EMAIL) — cũng bắt đầu/kết thúc bằng chữ/số nên vẫn an toàn làm tên thư mục.
+const ALNUM_EDGES = '[a-zA-Z0-9](?:[a-zA-Z0-9._+-]*[a-zA-Z0-9])?';
+const DOMAIN_LABEL = '[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?';
+export const EMAIL_USERNAME = new RegExp(`^${ALNUM_EDGES}@${DOMAIN_LABEL}(?:\\.${DOMAIN_LABEL})*\\.[a-zA-Z]{2,}$`);
 export const UsernameSchema = z
   .string()
   .trim()
   .min(2)
-  .max(40)
-  // Dùng làm tên thư mục bài nộp: bắt đầu và kết thúc bằng chữ/số (không ".", "..", không dấu chấm cuối).
-  .regex(/^[a-zA-Z0-9](?:[a-zA-Z0-9._-]*[a-zA-Z0-9])?$/, 'Tên đăng nhập chỉ gồm chữ không dấu, số và . _ -, bắt đầu và kết thúc bằng chữ hoặc số');
+  .max(USERNAME_MAX)
+  .refine(
+    (v) => PLAIN_USERNAME.test(v) || EMAIL_USERNAME.test(v),
+    'Tên đăng nhập là email, hoặc chỉ gồm chữ không dấu, số và . _ -, bắt đầu và kết thúc bằng chữ hoặc số',
+  );
 
-export const LoginBody = z.object({ username: z.string().trim().min(1).max(40), password: z.string().min(1).max(PASSWORD_MAX) });
+export const LoginBody = z.object({ username: z.string().trim().min(1).max(USERNAME_MAX), password: z.string().min(1).max(PASSWORD_MAX) });
 export const ChangePasswordBody = z.object({ currentPassword: z.string().min(1).max(PASSWORD_MAX), newPassword: PasswordSchema });
 
 const FullName = z.string().trim().min(1, 'Họ tên không được để trống').max(100);
