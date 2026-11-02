@@ -1,0 +1,7 @@
+{
+  "nam":  { "score": 10, "mustMention": [] },
+  "lan":  { "score": 9,  "mustMention": ["rỗng|empty"] },
+  "an":   { "score": 7,  "mustMention": ["TypeError", "var|toàn cục|global"] },
+  "hung": { "score": 0,  "mustMention": ["timeout|vô hạn|treo"] },
+  "minh": { "score": 0,  "mustMention": ["cú pháp|syntax"] }
+}
