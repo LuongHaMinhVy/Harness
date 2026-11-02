@@ -2,7 +2,7 @@
 
 Web lớp học có đăng nhập cho **học viên**, **giảng viên**, **admin**: học viên nộp bài (file, cả thư mục hoặc link GitHub), AI chấm theo đúng các file đã nộp — đọc code, chạy test trong môi trường cô lập, đề xuất điểm kèm nhận xét — và **giảng viên duyệt** mới thành điểm chính thức. Kèm CLI để chạy harness trực tiếp.
 
-Bài tập buổi 2 · Xây dựng harness. Dựng bằng [Vercel AI SDK](https://ai-sdk.dev) (`ai` v7) + Google Gemini (free tier), Hono, React, SQLite (`node:sqlite`).
+Bài tập xây dựng harness. Dựng bằng [Vercel AI SDK](https://ai-sdk.dev) (`ai` v7) + Google Gemini (free tier), Hono, React, SQLite (`node:sqlite`).
 
 ## Yêu cầu của đề → nơi đáp ứng
 

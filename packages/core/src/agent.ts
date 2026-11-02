@@ -1,6 +1,6 @@
 import { generateText, stepCountIs, type LanguageModel, type ModelMessage, type StepResult, type ToolSet } from 'ai';
 import { usageOf, type StepLog } from './logger.js';
-import { LAST_STEP_NOTE } from './prompt.js';
+import { lastStepNote } from './prompt.js';
 
 export type RunOptions = {
   model: LanguageModel;
@@ -72,8 +72,13 @@ export async function runQuestion(o: RunOptions): Promise<RunOutcome> {
     timeout: { totalMs: o.timeoutMs ?? TIMEOUT_MS },
     // Lượt cuối: cấm gọi tool và nhắc trả lời. Giữ nguyên system + bộ tool (đổi là lệch prefix → mất prompt cache),
     // lời nhắc nối vào CUỐI messages.
-    prepareStep: ({ stepNumber, messages }) =>
-      stepNumber === o.maxSteps - 1 ? { toolChoice: 'none', messages: [...messages, { role: 'user', content: LAST_STEP_NOTE }] } : {},
+    prepareStep: ({ stepNumber, messages, steps }) =>
+      stepNumber === o.maxSteps - 1
+        ? {
+            toolChoice: 'none',
+            messages: [...messages, { role: 'user', content: lastStepNote(steps.flatMap((st) => st.toolCalls.map((c) => c.toolName))) }],
+          }
+        : {},
     onStepEnd: (step) => {
       const now = Date.now();
       const log = toStepLog(step, now - last);

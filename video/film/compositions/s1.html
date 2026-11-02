@@ -1,0 +1,40 @@
+<template>
+  <style>
+  #root { position: absolute; inset: 0; background: #f4f6fb; overflow: hidden; font-family: Inter, sans-serif; }
+  .zoom { position: absolute; inset: 0; }
+  .rec { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; object-fit: contain; }
+  .pill { position: absolute; left: 0; right: 0; top: 18px; display: flex; justify-content: center; z-index: 5; }
+  .pill span { display: inline-block; padding: 12px 28px; border-radius: 999px; background: rgba(255,255,255,.94); border: 1px solid #d0d7e2;
+    box-shadow: 0 6px 24px rgba(15,23,42,.12); font-weight: 700; font-size: 28px; color: #0f172a; }
+  .badge { position: absolute; right: 64px; top: 22px; z-index: 6; }
+  .badge span { display: inline-block; padding: 8px 18px; border-radius: 999px; background: #0f172a; color: #fff; font-weight: 700; font-size: 28px; }
+  /* Chú thích nằm trong khoảng trống dưới menu trái của app (rộng ~270 px) — không che nội dung đang được nói tới. */
+  .callout { position: absolute; left: 20px; bottom: 44px; width: 262px; z-index: 7; }
+  .callout span { display: block; padding: 16px 18px 16px 18px; background: #fff; border-left: 6px solid #2563eb; border-radius: 10px;
+    box-shadow: 0 10px 32px rgba(15,23,42,.18); font-weight: 700; font-size: 30px; line-height: 1.25; color: #0f172a; }
+  .intro { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 8; }
+  .intro .card { padding: 56px 80px; border-radius: 24px; background: rgba(255,255,255,.95); box-shadow: 0 24px 80px rgba(15,23,42,.22); text-align: center; }
+  .intro h1 { font-weight: 900; font-size: 64px; color: #0f172a; letter-spacing: -0.02em; }
+  .intro p { margin-top: 18px; font-weight: 400; font-size: 32px; color: #334155; }
+</style>
+  <div data-hf-id="hf-rwlu" id="root" data-composition-id="s1" data-width="1920" data-height="1080" data-duration="30.4">
+    <div data-hf-id="hf-hisu" id="s1-zoom" class="zoom" data-layout-allow-overflow>
+      <video data-hf-id="hf-d31d" id="s1-video" class="clip rec" src="assets/rec/s1.mp4" muted playsinline data-start="0" data-duration="30.36" data-media-start="0" data-playback-rate="1.14" data-track-index="0"></video>
+    </div>
+    <div data-hf-id="hf-r3vz" id="s1-pill" class="clip pill" data-start="0" data-duration="30.4" data-track-index="1"><span data-hf-id="hf-ho2p" id="s1-pill-t">1/5 · Giới thiệu bài toán</span></div>
+    <div data-hf-id="hf-6t02" id="s1-c1" class="clip callout" data-start="10.22" data-duration="3.2" data-track-index="3"><span data-hf-id="hf-e9ti" id="s1-c1-t">Đề sum-array · 5 bài nộp của lớp</span></div>
+    <div data-hf-id="hf-3dq3" id="s1-c2" class="clip callout" data-start="24.34" data-duration="3.2" data-track-index="3"><span data-hf-id="hf-k1jl" id="s1-c2-t">Trang Harness của admin</span></div>
+    <div data-hf-id="hf-s8zo" id="s1-intro" class="clip intro" data-start="0" data-duration="3.6" data-track-index="4"><div data-hf-id="hf-ch8r" id="s1-card" class="card"><h1 data-hf-id="hf-ed4a">Bài tập · Xây dựng harness</h1><p data-hf-id="hf-f7jg">Chấm bài lập trình JavaScript · Gemini, Groq dự phòng</p></div></div>
+  </div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    tl.fromTo('#s1-pill-t', { y: -16, opacity: 0 }, { y: 0, opacity: 1, duration: 0.35, ease: 'power3.out' }, 0.1);
+    tl.fromTo('#s1-c1-t', { x: -24, opacity: 0 }, { x: 0, opacity: 1, duration: 0.3, ease: 'power3.out' }, 10.22);
+    tl.to('#s1-c1-t', { opacity: 0, duration: 0.25, ease: 'power1.in' }, 13.12);
+    tl.fromTo('#s1-c2-t', { x: -24, opacity: 0 }, { x: 0, opacity: 1, duration: 0.3, ease: 'power3.out' }, 24.34);
+    tl.to('#s1-c2-t', { opacity: 0, duration: 0.25, ease: 'power1.in' }, 27.24);
+    tl.fromTo('#s1-card', { y: 24, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, ease: 'power3.out' }, 0);
+    tl.to('#s1-card', { opacity: 0, duration: 0.35, ease: 'power1.in' }, 3.2);
+    window.__timelines['s1'] = tl;
+  </script>
+</template>

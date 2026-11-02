@@ -18,3 +18,13 @@ data/grades-demo.json
 data/grades-eval-demo.json
 video/record/node_modules/
 video/record/out/
+# Video nộp bài: file sinh ra (bản quay, giọng đọc, render) không đưa lên git
+video/film/renders/
+video/film/.hyperframes/
+video/film/assets/rec/
+video/film/assets/voice/
+video/film/check.json
+video/film/node_modules/
+video/film/.thumbnails/
+video/film/.waveform-cache/
+video/film/.media/

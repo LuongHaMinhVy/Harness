@@ -1,27 +1,25 @@
-# Lời thuyết minh (bản nháp — số liệu chốt theo lần chạy thật)
+# Lời thuyết minh (khớp bản quay thật trong video/record/out/real)
 
-Thứ tự theo đề: giới thiệu → câu bình thường (log từng lượt, chi phí) → câu dựa vào câu trước → cố ý gây lỗi → phần nâng cao. Tổng ≤ 5 phút. Hình là màn hình quay thật (web lớp học + trang Harness của admin, Gemini 2.5 Flash free tier).
+Nguồn chính: `video/film/audio_request.json` (Gemini TTS, giọng nam "Charon"; đoạn 4 dùng gemini-3.8-flash-lite-tts vì model chính hết quota ngày). Thứ tự theo đề: giới thiệu → câu bình thường (log từng lượt, chi phí) → câu dựa vào câu trước → cố ý gây lỗi → phần nâng cao. Hình là màn hình quay thật (web lớp học + trang Harness của admin, Gemini 2.5 Flash; Groq dự phòng khi Gemini hết quota).
 
-## 1. Giới thiệu bài toán (~40 s) — màn hình: đăng nhập → danh sách bài nộp của đề sum-array
+## 1. Giới thiệu bài toán — đăng nhập giảng viên → danh sách bài nộp → trang Harness
 
-> Xin chào. Đây là bài tập buổi hai: xây dựng harness. Bài toán em chọn là chấm bài lập trình JavaScript. Học viên nộp code lên web lớp học; harness cho Gemini đọc code, chạy bộ test trong môi trường cô lập, rồi đề xuất điểm theo rubric. Giảng viên duyệt thì điểm mới thành chính thức. Harness viết bằng Vercel AI SDK, dùng Gemini 2.5 Flash bản miễn phí, với năm tool tự viết: liệt kê bài nộp, liệt kê file, đọc file, chạy test và lưu điểm.
+> Xin chào. Đây là bài tập xây dựng harness. Bài toán em chọn là chấm bài lập trình JavaScript. Học viên nộp code lên web lớp học; harness cho mô hình đọc code, chạy bộ test trong môi trường cô lập, rồi đề xuất điểm theo rubric. Giảng viên duyệt thì điểm mới thành chính thức. Harness viết bằng Vercel AI SDK; mô hình chính là Gemini 2.5 Flash bản miễn phí, có Groq làm dự phòng, cùng năm tool tự viết: liệt kê bài nộp, liệt kê file, đọc file, chạy test và lưu điểm.
 
-## 2. Câu bình thường (~65 s) — trang Harness: "Chấm bài của Nam"
+## 2. Câu bình thường — trang Harness: "Chấm bài của Nam" (log từng lượt, duyệt điểm, chi phí)
 
-> Đầu tiên là một câu bình thường: chấm bài của Nam. Bên phải là log từng lượt. Mỗi dòng ghi tool nào được gọi, input là gì và kết quả ra sao. Mô hình xem bài gồm những file nào, chạy bộ test, đọc code, rồi gọi save_grade. Lưu điểm là thao tác ghi, nên harness dừng lại chờ em duyệt. Em bấm Duyệt. Cuối câu hỏi là tổng số lượt, token vào và ra, phần cache, và chi phí quy đổi theo bảng giá Gemini.
+> Đầu tiên là một câu bình thường: chấm bài của Nam. Bên phải là log từng lượt: tool nào được gọi, input là gì, kết quả ra sao, cùng token và cache của lượt đó. Ở lượt đầu, mô hình gọi cùng lúc hai tool: xem bài gồm những file nào và chạy bộ test. Lượt sau đọc code, rồi gọi tool lưu điểm. Lưu điểm là thao tác ghi, nên harness dừng lại chờ em duyệt. Em bấm Duyệt. Cuối câu hỏi là tổng số lượt, token vào và ra, cache, và chi phí quy đổi theo bảng giá Gemini.
 
-## 3. Câu dựa vào câu trước (~35 s) — "So với bài của Lan thì ai tốt hơn?"
+## 3. Câu dựa vào câu trước — "Chấm luôn bài của Lan rồi so với bài vừa chấm, ai tốt hơn?"
 
-> Câu tiếp theo em không nhắc lại tên Nam. Harness gửi lại toàn bộ lịch sử, nên mô hình hiểu đang so với Nam, dùng lại kết quả đã có và chỉ chấm thêm bài của Lan. Phần đầu prompt giống hệt lần trước, nên Gemini báo cache hit: phần lớn token đầu vào được tính giá rẻ.
+> Câu tiếp theo em chỉ nói “bài vừa chấm”, không nhắc tên Nam. Harness gửi lại toàn bộ lịch sử, nên mô hình hiểu bài vừa chấm là của Nam: nó chấm bài của Lan rồi so sánh với Nam. Phần đầu prompt giống hệt các lượt trước, nên Gemini báo cache hit: phần lớn token đầu vào được tính giá rẻ.
 
-## 4. Cố ý gây lỗi (~60 s) — "Chấm bài của Tuấn", rồi giới hạn 2 lượt + "Chấm bài của Minh"
+## 4. Cố ý gây lỗi — "Đọc giúp em file submissions/sum-array/tuan.js", rồi giới hạn 2 lượt + "Chấm bài của Minh"
 
-> Giờ em cố ý gây lỗi. Lớp không có học viên tên Tuấn. Tool trả về lỗi kèm gợi ý; harness không dừng mà đưa lỗi lại cho mô hình, và mô hình báo rõ là không tìm thấy bài. Tiếp theo em hạ giới hạn xuống hai lượt rồi hỏi chấm bài của Minh. Ở lượt cuối, harness cấm gọi tool và nhắc mô hình trả lời bằng thông tin đã có. Log báo đã dùng hết hai trên hai lượt, nhưng người dùng vẫn nhận được câu trả lời rõ ràng.
+> Giờ em cố ý gây lỗi. Em nhờ đọc bài của Tuấn, nhưng lớp không có học viên này. Tool trả về lỗi kèm gợi ý; harness không dừng mà đưa lỗi lại cho mô hình, và mô hình báo rõ là không có bài của Tuấn. Tiếp theo em hạ giới hạn xuống hai lượt rồi hỏi chấm bài của Minh. Ở lượt cuối, harness cấm gọi tool và nhắc mô hình chỉ dùng kết quả đã có, phần nào chưa kiểm tra thì phải nói rõ. Log báo đã dùng hết hai trên hai lượt, nhưng người dùng vẫn nhận được câu trả lời rõ ràng. Còn khi Gemini hết quota, harness tự chuyển sang Groq dự phòng.
 
-## 5. Phần nâng cao (~80 s) — web lớp học: học viên nộp → giảng viên Chấm → cờ cảnh báo → duyệt → học viên thấy điểm
+## 5. Phần nâng cao — học viên An nộp bài có câu "dụ" AI → giảng viên Chấm → cờ cảnh báo → sửa điểm, duyệt → học viên thấy điểm
 
 > Phần nâng cao có hai thứ. Thứ nhất là duyệt trước khi ghi, như vừa thấy. Thứ hai là web lớp học ba vai trò. Học viên An nộp lại bài; trong code có một dòng chú thích nhờ AI cho mười điểm. Giảng viên bấm Chấm. Mỗi lần chấm chỉ đọc được đúng bài đang chấm, và code chạy trong sandbox không đọc được file khác, không thấy API key. Kết quả có số test đạt, điểm đề xuất, và cờ cảnh báo vì bài có câu nhắm vào AI. Giảng viên sửa điểm rồi duyệt; lúc này học viên mới thấy điểm chính thức.
 
-## 6. Kết (~10 s)
-
-> Mã nguồn ở github chấm com, gạch chéo LuongHaMinhVy, gạch chéo Harness. Em cảm ơn thầy cô đã xem.
+## 6. Kết — thẻ link repo, không lời (4,5 s)

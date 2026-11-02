@@ -1,0 +1,44 @@
+<template>
+  <style>
+  #root { position: absolute; inset: 0; background: #f4f6fb; overflow: hidden; font-family: Inter, sans-serif; }
+  .zoom { position: absolute; inset: 0; }
+  .rec { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; object-fit: contain; }
+  .pill { position: absolute; left: 0; right: 0; top: 18px; display: flex; justify-content: center; z-index: 5; }
+  .pill span { display: inline-block; padding: 12px 28px; border-radius: 999px; background: rgba(255,255,255,.94); border: 1px solid #d0d7e2;
+    box-shadow: 0 6px 24px rgba(15,23,42,.12); font-weight: 700; font-size: 28px; color: #0f172a; }
+  .badge { position: absolute; right: 64px; top: 22px; z-index: 6; }
+  .badge span { display: inline-block; padding: 8px 18px; border-radius: 999px; background: #0f172a; color: #fff; font-weight: 700; font-size: 28px; }
+  /* Chú thích nằm trong khoảng trống dưới menu trái của app (rộng ~270 px) — không che nội dung đang được nói tới. */
+  .callout { position: absolute; left: 20px; bottom: 44px; width: 262px; z-index: 7; }
+  .callout span { display: block; padding: 16px 18px 16px 18px; background: #fff; border-left: 6px solid #2563eb; border-radius: 10px;
+    box-shadow: 0 10px 32px rgba(15,23,42,.18); font-weight: 700; font-size: 30px; line-height: 1.25; color: #0f172a; }
+  .intro { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 8; }
+  .intro .card { padding: 56px 80px; border-radius: 24px; background: rgba(255,255,255,.95); box-shadow: 0 24px 80px rgba(15,23,42,.22); text-align: center; }
+  .intro h1 { font-weight: 900; font-size: 64px; color: #0f172a; letter-spacing: -0.02em; }
+  .intro p { margin-top: 18px; font-weight: 400; font-size: 32px; color: #334155; }
+</style>
+  <div data-hf-id="hf-kl4l" id="root" data-composition-id="s2" data-width="1920" data-height="1080" data-duration="35.16">
+    <div data-hf-id="hf-wg13" id="s2-zoom" class="zoom" data-layout-allow-overflow>
+      <video data-hf-id="hf-zu5t" id="s2-video" class="clip rec" src="assets/rec/s2.mp4" muted playsinline data-start="0" data-duration="33.4" data-media-start="7.88" data-playback-rate="0.7" data-track-index="0"></video>
+      <img data-hf-id="hf-c58l" id="s2-hold" class="clip rec" src="assets/rec/s2-last.png" alt="" data-hold data-start="33.4" data-duration="1.76" data-track-index="0" />
+    </div>
+    <div data-hf-id="hf-8a00" id="s2-pill" class="clip pill" data-start="0" data-duration="35.16" data-track-index="1"><span data-hf-id="hf-ftaw" id="s2-pill-t">2/5 · Câu bình thường: log từng lượt + chi phí</span></div>
+    <div data-hf-id="hf-4vuv" id="s2-c1" class="clip callout" data-start="7.73" data-duration="3.2" data-track-index="3"><span data-hf-id="hf-4zwl" id="s2-c1-t">Log từng lượt: tool · input · kết quả</span></div>
+    <div data-hf-id="hf-ra0s" id="s2-c2" class="clip callout" data-start="14.93" data-duration="3.2" data-track-index="3"><span data-hf-id="hf-hn3d" id="s2-c2-t">Thao tác ghi → chờ duyệt</span></div>
+    <div data-hf-id="hf-6g37" id="s2-c3" class="clip callout" data-start="22.36" data-duration="3.2" data-track-index="3"><span data-hf-id="hf-h6kh" id="s2-c3-t">Tổng lượt · token · cache · chi phí</span></div>
+  </div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    tl.fromTo('#s2-pill-t', { y: -16, opacity: 0 }, { y: 0, opacity: 1, duration: 0.35, ease: 'power3.out' }, 0.1);
+    tl.fromTo('#s2-c1-t', { x: -24, opacity: 0 }, { x: 0, opacity: 1, duration: 0.3, ease: 'power3.out' }, 7.73);
+    tl.to('#s2-c1-t', { opacity: 0, duration: 0.25, ease: 'power1.in' }, 10.63);
+    tl.fromTo('#s2-c2-t', { x: -24, opacity: 0 }, { x: 0, opacity: 1, duration: 0.3, ease: 'power3.out' }, 14.93);
+    tl.to('#s2-c2-t', { opacity: 0, duration: 0.25, ease: 'power1.in' }, 17.83);
+    tl.fromTo('#s2-c3-t', { x: -24, opacity: 0 }, { x: 0, opacity: 1, duration: 0.3, ease: 'power3.out' }, 22.36);
+    tl.to('#s2-c3-t', { opacity: 0, duration: 0.25, ease: 'power1.in' }, 25.26);
+    tl.set('#s2-zoom', { transformOrigin: '97% 96%' }, 22.36);
+    tl.fromTo('#s2-zoom', { scale: 1 }, { scale: 1.32, duration: 0.8, ease: 'power2.inOut' }, 22.36);
+    tl.to('#s2-zoom', { scale: 1, duration: 0.6, ease: 'power2.inOut' }, 34.16);
+    window.__timelines['s2'] = tl;
+  </script>
+</template>

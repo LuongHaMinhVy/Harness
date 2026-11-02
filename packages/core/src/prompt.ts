@@ -4,6 +4,16 @@ import { join } from 'node:path';
 export const LAST_STEP_NOTE =
   'Đây là lượt cuối. Không gọi tool nữa. Trả lời ngay bằng thông tin đã thu thập và nói rõ phần nào chưa kiểm tra được.';
 
+// Lời nhắc lượt cuối kèm danh sách tool đã thật sự chạy trong câu hỏi này: model (nhất là model dự phòng) hay "điền nốt"
+// kết quả test hoặc nội dung code chưa từng đọc — nói thẳng phần nào là chưa biết.
+export function lastStepNote(toolsRun: string[]): string {
+  const ran = [...new Set(toolsRun)];
+  const known = ran.length
+    ? `Trong câu hỏi này mới chạy các tool: ${ran.join(', ')}. Chỉ dùng kết quả của đúng các tool đó.`
+    : 'Trong câu hỏi này chưa chạy tool nào.';
+  return `${LAST_STEP_NOTE} ${known} Kết quả của tool chưa chạy (vd. kết quả test, nội dung file) là chưa biết: ghi rõ "chưa kiểm tra", không được đoán hay bịa, không chấm điểm khi chưa có kết quả test.`;
+}
+
 // Phần đầu prompt phải giống hệt nhau giữa các lần gọi để ăn prompt cache: không chèn thời gian hay giá trị thay đổi.
 export function buildSystemPrompt(dataDir: string, assignment = 'sum-array'): string {
   const dir = join(dataDir, 'assignments', assignment);

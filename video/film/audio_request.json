@@ -1,0 +1,33 @@
+{
+  "provider": "gemini",
+  "tts_model": "gemini-3.8-flash-tts",
+  "voice": "Charon",
+  "lang": "vi",
+  "style": "A Vietnamese male university student presenting his homework project to teachers: clear, warm, confident, moderate pace, natural Vietnamese tones, short pauses between sentences.",
+  "lines": [
+    {
+      "id": "s1",
+      "text": "Xin chào. Đây là bài tập xây dựng harness. Bài toán em chọn là chấm bài lập trình JavaScript. Học viên nộp code lên web lớp học; harness cho mô hình đọc code, chạy bộ test trong môi trường cô lập, rồi đề xuất điểm theo rubric. Giảng viên duyệt thì điểm mới thành chính thức. Harness viết bằng Vercel AI SDK; mô hình chính là Gemini 2.5 Flash bản miễn phí, có Groq làm dự phòng, cùng năm tool tự viết: liệt kê bài nộp, liệt kê file, đọc file, chạy test và lưu điểm."
+    },
+    {
+      "id": "s2",
+      "text": "Đầu tiên là một câu bình thường: chấm bài của Nam. Bên phải là log từng lượt: tool nào được gọi, input là gì, kết quả ra sao, cùng token và cache của lượt đó. Ở lượt đầu, mô hình gọi cùng lúc hai tool: xem bài gồm những file nào và chạy bộ test. Lượt sau đọc code, rồi gọi tool lưu điểm. Lưu điểm là thao tác ghi, nên harness dừng lại chờ em duyệt. Em bấm Duyệt. Cuối câu hỏi là tổng số lượt, token vào và ra, cache, và chi phí quy đổi theo bảng giá Gemini."
+    },
+    {
+      "id": "s3",
+      "text": "Câu tiếp theo em chỉ nói “bài vừa chấm”, không nhắc tên Nam. Harness gửi lại toàn bộ lịch sử, nên mô hình hiểu bài vừa chấm là của Nam: nó chấm bài của Lan rồi so sánh với Nam. Phần đầu prompt giống hệt các lượt trước, nên Gemini báo cache hit: phần lớn token đầu vào được tính giá rẻ."
+    },
+    {
+      "id": "s4",
+      "text": "Giờ em cố ý gây lỗi. Em nhờ đọc bài của Tuấn, nhưng lớp không có học viên này. Tool trả về lỗi kèm gợi ý; harness không dừng mà đưa lỗi lại cho mô hình, và mô hình báo rõ là không có bài của Tuấn. Tiếp theo em hạ giới hạn xuống hai lượt rồi hỏi chấm bài của Minh. Ở lượt cuối, harness cấm gọi tool và nhắc mô hình chỉ dùng kết quả đã có, phần nào chưa kiểm tra thì phải nói rõ. Log báo đã dùng hết hai trên hai lượt, nhưng người dùng vẫn nhận được câu trả lời rõ ràng. Còn khi Gemini hết quota, harness tự chuyển sang Groq dự phòng.",
+      "tts_model": "gemini-3.8-flash-lite-tts"
+    },
+    {
+      "id": "s5",
+      "text": "Phần nâng cao có hai thứ. Thứ nhất là duyệt trước khi ghi, như vừa thấy. Thứ hai là web lớp học ba vai trò. Học viên An nộp lại bài; trong code có một dòng chú thích nhờ AI cho mười điểm. Giảng viên bấm Chấm. Mỗi lần chấm chỉ đọc được đúng bài đang chấm, và code chạy trong sandbox không đọc được file khác, không thấy API key. Kết quả có số test đạt, điểm đề xuất, và cờ cảnh báo vì bài có câu nhắm vào AI. Giảng viên sửa điểm rồi duyệt; lúc này học viên mới thấy điểm chính thức."
+    }
+  ],
+  "bgm": {
+    "mode": "none"
+  }
+}

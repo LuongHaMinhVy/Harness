@@ -1,4 +1,4 @@
-# Video nộp bài buổi 2 — ba hướng kể
+# Video nộp bài xây dựng harness — ba hướng kể
 
 Ràng buộc chung (từ đề): tối đa 5 phút, đúng thứ tự **giới thiệu → câu bình thường (log từng lượt + chi phí) → câu dựa vào câu trước → cố ý gây lỗi → phần nâng cao**. Mọi log, token, cache, chi phí trên màn hình lấy từ **một lần chạy thật** với Gemini 2.5 Flash (free tier) và ảnh chụp thật của web lớp học — không vẽ lại số liệu.
 

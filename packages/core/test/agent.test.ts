@@ -128,3 +128,18 @@ test('StepLog ghi model trả lời lượt đó, và cờ dự phòng khi middl
   const r = await runQuestion({ ...base, model, maxSteps: 2 });
   expect(r.steps[0]).toMatchObject({ model: 'openai/gpt-oss-120b', fallback: true });
 });
+
+test('lượt cuối: lời nhắc liệt kê đúng các tool đã chạy trong câu hỏi và cấm đoán phần chưa kiểm tra', async () => {
+  const { model } = stubbornModel();
+  await runQuestion({ ...base, model, maxSteps: 3 });
+  const note = JSON.stringify(model.doGenerateCalls.at(-1)!.prompt.at(-1));
+  expect(note).toContain('echo');
+  expect(note).toMatch(/chưa (biết|kiểm tra)/);
+  expect(note).toMatch(/không (được )?(đoán|bịa)/i);
+});
+
+test('lượt cuối khi chưa chạy tool nào: lời nhắc nói rõ là chưa có kết quả tool nào', async () => {
+  const { model } = stubbornModel();
+  await runQuestion({ ...base, model, maxSteps: 1 });
+  expect(JSON.stringify(model.doGenerateCalls.at(-1)!.prompt.at(-1))).toMatch(/chưa chạy tool nào/);
+});

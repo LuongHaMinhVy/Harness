@@ -1,9 +1,11 @@
 // Quay màn hình thật của web lớp học cho video nộp bài: Chrome headless 1920×1080 làm đúng kịch bản (video/SCRIPT.md),
-// mỗi phần một file .webm + một file mốc thời gian (để ghép giọng đọc).
+// mỗi phần một file .mp4 + một file mốc thời gian (để ghép giọng đọc).
 //   node record.mjs --base http://127.0.0.1:3002 --out out/real [--only s1,s2] [--password demo-12345]
 // Chạy với `pnpm web:demo` (Gemini thật) hoặc `pnpm web:mock` (tập dượt, không tốn quota).
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { execFileSync } from 'node:child_process';
+import { copyFileSync, linkSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { writeFile } from 'node:fs/promises';
+import { join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import puppeteer from 'puppeteer-core';
 
@@ -22,6 +24,7 @@ const OUT = resolve(args.out);
 const ONLY = new Set(args.only.split(','));
 mkdirSync(OUT, { recursive: true });
 
+const FPS = 30;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // Con trỏ chuột vẽ trong trang (Chrome headless không quay con trỏ thật), có vòng sáng khi bấm.
@@ -53,7 +56,7 @@ const CURSOR = `
 const browser = await puppeteer.launch({
   executablePath: args.chrome,
   headless: !args.headful,
-  // Bố cục 1536×864 phóng 125% → hình 1920×1080, chữ đủ to để đọc trong video.
+  // Bố cục 1536×864 phóng 125% → ảnh chụp 1920×1080, chữ đủ to để đọc trong video.
   defaultViewport: { width: 1536, height: 864, deviceScaleFactor: 1.25 },
   args: ['--window-size=1536,864', '--lang=vi-VN', '--force-color-profile=srgb', '--hide-scrollbars', '--disable-features=Translate'],
 });
@@ -100,11 +103,19 @@ async function moveTo(handle) {
   await sleep(180);
 }
 
+// Bấm bằng JavaScript (focus + click): chắc chắn trúng phần tử dù trang đang vẽ lại; con trỏ vẫn di chuyển thật tới
+// chỗ bấm và hiện vòng sáng khi bấm.
 async function click(handle, pause = 400) {
   await moveTo(handle);
-  await page.mouse.down();
-  await sleep(70);
-  await page.mouse.up();
+  await handle.evaluate(
+    (el, x, y) => {
+      dispatchEvent(new MouseEvent('mousedown', { clientX: x, clientY: y, bubbles: true }));
+      el.focus?.();
+      el.click();
+    },
+    mouse.x,
+    mouse.y,
+  );
   await sleep(pause);
 }
 
@@ -115,10 +126,11 @@ async function typeInto(handle, text, delay = 55) {
 
 async function login(username) {
   await goto('/dang-nhap');
-  await sleep(600);
-  const [user, pass] = await page.$$('form input');
-  await typeInto(user, username, 70);
-  await typeInto(pass, args.password, 40);
+  // Chờ trang kiểm tra phiên xong (React vẽ lại form) rồi mới tìm ô nhập, kẻo gõ vào ô cũ đã bị thay.
+  await page.waitForNetworkIdle({ idleTime: 400 }).catch(() => {});
+  await sleep(500);
+  await typeInto(await page.waitForSelector('form input:not([type=password])'), username, 70);
+  await typeInto(await page.waitForSelector('form input[type=password]'), args.password, 40);
   await click(await byText('Đăng nhập'), 200);
   await page.waitForFunction(() => !location.pathname.startsWith('/dang-nhap'), { timeout: 15000 });
   await page.waitForNetworkIdle({ idleTime: 400 }).catch(() => {});
@@ -140,12 +152,59 @@ const api = (path, init) =>
     init,
   );
 
+// Quay bằng CDP Page.startScreencast: Chrome gửi một khung mỗi khi trang thay đổi (kể cả log đổ về qua SSE trong lúc
+// chờ model), lưu kèm thời điểm nhận rồi ghép theo đúng nhịp thời gian thật. Không dùng page.screencast của puppeteer:
+// bản ghi của nó đứng hình khi không có thao tác chuột/bàn phím.
+async function startCapture(name) {
+  const dir = join(OUT, `${name}-frames`);
+  rmSync(dir, { recursive: true, force: true });
+  mkdirSync(dir, { recursive: true });
+  const frames = [];
+  const writes = [];
+  const cdp = await page.createCDPSession();
+  cdp.on('Page.screencastFrame', (f) => {
+    const file = join(dir, `${String(frames.length).padStart(6, '0')}.jpg`);
+    frames.push({ t: Date.now(), file });
+    writes.push(writeFile(file, Buffer.from(f.data, 'base64')));
+    cdp.send('Page.screencastFrameAck', { sessionId: f.sessionId }).catch(() => {});
+  });
+  await cdp.send('Page.startScreencast', { format: 'jpeg', quality: 90, maxWidth: 1920, maxHeight: 1080, everyNthFrame: 1 });
+  const started = Date.now();
+  return {
+    async stop(path) {
+      await cdp.send('Page.stopScreencast').catch(() => {});
+      await Promise.all(writes);
+      await cdp.detach().catch(() => {});
+      // Dựng chuỗi 30 khung/giây theo thời gian thật tính từ lúc bắt đầu quay: mỗi khung ra là khung Chrome gửi gần
+      // nhất trước thời điểm đó (hard link, không tốn dung lượng). Mốc thời gian sự kiện trong .json khớp với video.
+      const end = Date.now();
+      const out = join(dir, 'cfr');
+      mkdirSync(out);
+      let k = 0;
+      const total = Math.round(((end - started) / 1000) * FPS);
+      for (let n = 0; n < total; n++) {
+        const at = started + (n * 1000) / FPS;
+        while (k + 1 < frames.length && frames[k + 1].t <= at) k++;
+        const dest = join(out, `${String(n).padStart(6, '0')}.jpg`);
+        try {
+          linkSync(frames[k].file, dest);
+        } catch {
+          copyFileSync(frames[k].file, dest); // NTFS chỉ cho ~1.023 hard link mỗi file (đoạn đứng yên dài)
+        }
+      }
+      execFileSync('ffmpeg', ['-loglevel', 'error', '-y', '-framerate', String(FPS), '-i', join(out, '%06d.jpg'), '-vf', 'scale=1920:1080:flags=lanczos,format=yuv420p', '-c:v', 'libx264', '-crf', '18', '-preset', 'medium', path]);
+      if (!process.env.KEEP_FRAMES) rmSync(dir, { recursive: true, force: true });
+      return frames.length;
+    },
+  };
+}
+
 // Một phần của video = một file quay + mốc thời gian (giây tính từ đầu file).
 async function segment(name, fn) {
   if (!ONLY.has(name)) return;
   console.log(`▶ ${name}`);
   const marks = [];
-  const recorder = await page.screencast({ path: `${OUT}/${name}.webm`, fps: 30, quality: 18, scale: 1.25 });
+  const recorder = await startCapture(name);
   const t0 = Date.now();
   const mark = (label, extra = {}) => {
     const t = (Date.now() - t0) / 1000;
@@ -158,7 +217,8 @@ async function segment(name, fn) {
     await sleep(1800);
   } finally {
     mark('end');
-    await recorder.stop();
+    const n = await recorder.stop(`${OUT}/${name}.mp4`);
+    console.log(`  ${n} khung (${(n / marks.at(-1).t).toFixed(1)} khung/giây)`);
     writeFileSync(`${OUT}/${name}.json`, JSON.stringify(marks, null, 2));
   }
 }
@@ -191,6 +251,12 @@ async function ask(mark, question, { approve = true } = {}) {
     }
     if (st && !st.busy && turn && (turn.answer || turn.error)) {
       mark('answer', { summary: turn.summary ?? null, error: turn.error ?? null });
+      for (let k = 0; k < 12; k++) {
+        const dom = await page.evaluate(() => ({ thinking: !!document.querySelector('.thinking'), summary: !!document.querySelector('.log-turn:last-child .summary'), turns: document.querySelectorAll('.log-turn').length }));
+        if (process.env.DEBUG_UI) console.log('    dom', k, JSON.stringify(dom));
+        if (!dom.thinking) break;
+        await sleep(250);
+      }
       return turn;
     }
     await sleep(250);
@@ -250,13 +316,21 @@ await segment('s2', async (mark) => {
 });
 
 await segment('s3', async (mark) => {
-  results.s3 = await ask(mark, 'So với bài của Lan thì ai tốt hơn?');
+  // Nói rõ việc cần làm nhưng vẫn dựa vào câu trước ("bài vừa chấm"); hỏi trống "ai tốt hơn?" thì model có thể chỉ hỏi lại.
+  results.s3 = await ask(mark, 'Chấm luôn bài của Lan rồi so với bài vừa chấm, ai tốt hơn?');
   await scrollLogToBottom();
   await sleep(5000);
 });
 
 await segment('s4', async (mark) => {
-  results.s4a = await ask(mark, 'Chấm bài của Tuấn');
+  if (!page.url().includes('/admin/harness')) {
+    await login('admin');
+    await goto('/admin/harness');
+    await setMaxSteps(6);
+  }
+  // Hỏi thẳng file không tồn tại: chắc chắn model gọi read_file và tool báo lỗi ("Chấm bài của Tuấn" thì model có thể
+  // trả lời luôn từ danh sách bài nộp đã có trong lịch sử, không gọi tool).
+  results.s4a = await ask(mark, 'Đọc giúp em file submissions/sum-array/tuan.js');
   await scrollLogToBottom();
   await sleep(4000);
   await setMaxSteps(2);
