@@ -36,9 +36,11 @@ export function checkPath(raw: string): string {
   return path;
 }
 
-// Giải nén .zip có đếm byte THẬT trong lúc giải nén (header zip có thể khai man kích thước),
-// dừng ngay khi vượt giới hạn — chặn zip nén quá mức. Không bao giờ tạo symlink: mọi mục đều là dữ liệu thường.
-export function extractZip(data: Uint8Array): UploadedFile[] {
+// Giải nén .zip (dùng cho archive tải từ GitHub) có đếm byte THẬT trong lúc giải nén (header zip có thể khai man
+// kích thước), dừng ngay khi vượt giới hạn — chặn zip nén quá mức. Không bao giờ tạo symlink: mọi mục đều là dữ liệu thường.
+// skipInvalid: bỏ qua (không giải nén) file ẩn, đuôi lạ, node_modules, đường dẫn "../" thay vì báo lỗi — repo thật
+// thường có .gitignore, ảnh…; mục bị bỏ qua không được giải nén nên không tốn dung lượng.
+export function extractZip(data: Uint8Array, opts: { skipInvalid?: boolean } = {}): UploadedFile[] {
   const files: UploadedFile[] = [];
   let entries = 0;
   let total = 0;
@@ -52,15 +54,16 @@ export function extractZip(data: Uint8Array): UploadedFile[] {
     if (file.name.endsWith('/')) return; // thư mục
     const name = file.name.replace(/\\/g, '/');
     if (isJunk(name)) return;
-    if (++entries > LIMITS.zipEntries) {
-      failure = new UploadError(`File zip có quá nhiều mục (tối đa ${LIMITS.zipEntries})`);
-      return;
-    }
+    if (opts.skipInvalid && name.split('/').includes('node_modules')) return;
     let path: string;
     try {
       path = checkPath(name);
     } catch (e) {
-      failure = e as UploadError;
+      if (!opts.skipInvalid) failure = e as UploadError;
+      return;
+    }
+    if (++entries > LIMITS.zipEntries) {
+      failure = new UploadError(`Bài nộp có quá nhiều file (tối đa ${LIMITS.zipEntries})`);
       return;
     }
     const chunks: Uint8Array[] = [];
@@ -108,22 +111,33 @@ function concat(chunks: Uint8Array[], size: number): Uint8Array {
   return out;
 }
 
-// Gom file từ form nộp bài: một file .zip duy nhất → giải nén; còn lại → từng file (tên có thể chứa thư mục con).
+// Mọi file cùng nằm trong một thư mục gốc (chọn cả thư mục khi nộp, archive GitHub "<repo>-<sha>/") → bỏ thư mục đó.
+export function stripCommonRoot(files: UploadedFile[]): UploadedFile[] {
+  const first = files[0]?.path.split('/')[0];
+  if (!first || !files.every((f) => f.path.includes('/') && f.path.split('/')[0] === first)) return files;
+  return files.map((f) => ({ ...f, path: f.path.slice(first.length + 1) }));
+}
+
+// Gom file từ form nộp bài (từng file hoặc cả thư mục; tên có thể chứa thư mục con). Không nhận .zip:
+// nộp cả thư mục giữ được cấu trúc mà server không phải giải nén.
 export async function collectFiles(input: File[]): Promise<UploadedFile[]> {
   if (!input.length) throw new UploadError('Chưa chọn file nào để nộp');
-  let files: UploadedFile[];
-  if (input.length === 1 && input[0].name.toLowerCase().endsWith('.zip')) {
-    files = extractZip(new Uint8Array(await input[0].arrayBuffer()));
-  } else {
-    if (input.length > LIMITS.files) throw new UploadError(`Nộp quá nhiều file (tối đa ${LIMITS.files})`);
-    files = [];
-    for (const f of input) {
-      const path = checkPath(f.name);
-      if (isJunk(path)) continue;
-      if (f.size > LIMITS.fileBytes) throw new UploadError(`File "${path}" quá lớn (tối đa ${LIMITS.fileBytes / 1024} KB)`);
-      files.push({ path, data: new Uint8Array(await f.arrayBuffer()) });
-    }
+  if (input.some((f) => /\.(zip|rar|7z|tar|gz|tgz)$/i.test(f.name))) {
+    throw new UploadError('Không nhận file nén — hãy chọn cả thư mục bài làm hoặc nộp bằng link GitHub');
   }
+  if (input.length > LIMITS.files) throw new UploadError(`Nộp quá nhiều file (tối đa ${LIMITS.files})`);
+  const files: UploadedFile[] = [];
+  for (const f of input) {
+    const path = checkPath(f.name);
+    if (isJunk(path)) continue;
+    if (f.size > LIMITS.fileBytes) throw new UploadError(`File "${path}" quá lớn (tối đa ${LIMITS.fileBytes / 1024} KB)`);
+    files.push({ path, data: new Uint8Array(await f.arrayBuffer()) });
+  }
+  return checkFileSet(files);
+}
+
+// Kiểm tra chung cho mọi nguồn bài nộp (upload, GitHub): số file, trùng tên, không rỗng.
+export function checkFileSet(files: UploadedFile[]): UploadedFile[] {
   if (files.length > LIMITS.files) throw new UploadError(`Nộp quá nhiều file (tối đa ${LIMITS.files})`);
   const seen = new Set<string>();
   for (const f of files) {

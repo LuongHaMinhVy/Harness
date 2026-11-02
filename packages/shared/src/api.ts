@@ -83,12 +83,25 @@ export const EntryFileSchema = z
 // --- Bài nộp và điểm ---
 
 export type SubmittedFile = { path: string; size: number };
-export type Submission = { id: number; assignmentId: number; studentId: number; version: number; files: SubmittedFile[]; submittedAt: number };
+export type SubmissionSource = 'upload' | 'github';
+export type Submission = {
+  id: number;
+  assignmentId: number;
+  studentId: number;
+  version: number;
+  files: SubmittedFile[];
+  submittedAt: number;
+  source: SubmissionSource;
+  githubUrl: string | null;
+  commit: string | null;
+};
 /** Điểm chính thức — chỉ có sau khi giảng viên duyệt; học viên chỉ thấy loại điểm này. */
 export type Grade = { submissionId: number; score: number; comments: string; edited: boolean; approvedAt: number; approvedBy: string };
 export type StudentAssignment = Assignment & { latest: Submission | null; grade: Grade | null };
 export type StudentAssignmentDetail = StudentAssignment & { submissions: Submission[] };
 export type FileContent = { path: string; content: string };
+
+export const GithubSubmitBody = z.object({ url: z.string().trim().min(1, 'Hãy dán link repo GitHub').max(300) });
 
 export const AssignmentBody = z.object({
   title: z.string().trim().min(1, 'Tên đề không được để trống').max(120),

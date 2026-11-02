@@ -1,6 +1,6 @@
 import { strToU8, zipSync } from 'fflate';
 import { expect, test } from 'vitest';
-import { checkPath, collectFiles, extractZip, LIMITS, UploadError } from '../src/uploads/collect.js';
+import { checkPath, collectFiles, extractZip, LIMITS, stripCommonRoot, UploadError } from '../src/uploads/collect.js';
 
 const zip = (entries: Record<string, string | Uint8Array>) =>
   zipSync(Object.fromEntries(Object.entries(entries).map(([k, v]) => [k, typeof v === 'string' ? strToU8(v) : v])));
@@ -60,11 +60,27 @@ test('dữ liệu không phải zip → từ chối với thông báo rõ', () =
 
 // --- gom file từ form ---
 
-test('nhiều file thường → giữ nguyên; một file .zip → giải nén', async () => {
+test('nhiều file thường → giữ nguyên đường dẫn; file .zip → từ chối kèm hướng dẫn', async () => {
   const plain = await collectFiles([new File(['a'], 'index.js'), new File(['b'], 'lib/util.js')]);
   expect(plain.map((f) => f.path)).toEqual(['index.js', 'lib/util.js']);
-  const fromZip = await collectFiles([new File([zip({ 'index.js': 'a' })], 'bai-lam.zip')]);
-  expect(fromZip.map((f) => f.path)).toEqual(['index.js']);
+  await expect(collectFiles([new File([zip({ 'index.js': 'a' })], 'bai-lam.zip')])).rejects.toThrow(/GitHub/);
+});
+
+test('stripCommonRoot bỏ thư mục gốc chung khi mọi file nằm trong cùng một thư mục', () => {
+  const f = (path: string) => ({ path, data: new Uint8Array() });
+  expect(stripCommonRoot([f('repo-abc/index.js'), f('repo-abc/lib/a.js')]).map((x) => x.path)).toEqual(['index.js', 'lib/a.js']);
+  expect(stripCommonRoot([f('index.js'), f('lib/a.js')]).map((x) => x.path)).toEqual(['index.js', 'lib/a.js']);
+  expect(stripCommonRoot([f('only/one.js')]).map((x) => x.path)).toEqual(['one.js']);
+});
+
+test('extractZip chế độ skipInvalid (archive GitHub): bỏ qua file ẩn, ảnh, node_modules, "../"; vẫn giới hạn dung lượng', () => {
+  const files = extractZip(
+    zip({ 'r/index.js': 'a', 'r/.gitignore': 'x', 'r/logo.png': 'x', 'r/node_modules/x/i.js': 'x', '../evil.js': 'x', 'r/README.md': 'doc' }),
+    { skipInvalid: true },
+  );
+  expect(files.map((f) => f.path).sort()).toEqual(['r/README.md', 'r/index.js']);
+  const bomb = zip({ 'r/index.js': new Uint8Array(LIMITS.zipTotalBytes + 1024) });
+  expect(errorOf(() => extractZip(bomb, { skipInvalid: true }))).toMatch(/quá lớn/);
 });
 
 test('trùng đường dẫn, quá nhiều file, file rỗng danh sách → từ chối', async () => {

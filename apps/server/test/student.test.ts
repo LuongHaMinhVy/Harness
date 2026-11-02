@@ -53,10 +53,9 @@ test('nộp nhiều file → phiên bản 1, file lưu đúng chỗ; nộp lại
   expect(detail.submissions.map((s: { version: number }) => s.version)).toEqual([2, 1]);
 });
 
-test('nộp file .zip → giải nén thành bài nộp', async () => {
+test('nộp cả thư mục (đường dẫn có thư mục gốc chung) → bỏ thư mục gốc, giữ cấu trúc con', async () => {
   const { as, upload } = await setup();
-  const z = zipSync({ 'index.js': strToU8('module.exports = {}'), 'helpers/math.js': strToU8('x') });
-  const res = await upload(as.nam, [new File([z], 'bai-lam.zip')]);
+  const res = await upload(as.nam, [js('bai-lam/index.js'), js('bai-lam/helpers/math.js', 'x')]);
   expect(res.status).toBe(201);
   expect((await res.json()).files.map((f: { path: string }) => f.path)).toEqual(['helpers/math.js', 'index.js']);
 });
@@ -68,10 +67,12 @@ test('thiếu file chính → 400 nêu tên file chính', async () => {
   expect((await res.json()).error).toContain('index.js');
 });
 
-test('zip chứa "../" → 400 và không ghi gì ra đĩa', async () => {
+test('nộp file .zip → 400 hướng dẫn nộp file/thư mục hoặc link GitHub, không ghi gì ra đĩa', async () => {
   const { as, upload, a, dataDir } = await setup();
-  const evil = zipSync({ 'index.js': strToU8('x'), '../../evil.js': strToU8('x') });
-  expect((await upload(as.nam, [new File([evil], 'x.zip')])).status).toBe(400);
+  const z = zipSync({ 'index.js': strToU8('x') });
+  const res = await upload(as.nam, [new File([z], 'bai-lam.zip')]);
+  expect(res.status).toBe(400);
+  expect((await res.json()).error).toMatch(/GitHub/);
   expect(existsSync(join(dataDir, 'submissions', a.slug, 'nam'))).toBe(false);
 });
 

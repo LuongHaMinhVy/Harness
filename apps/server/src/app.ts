@@ -19,12 +19,13 @@ import { teacherRoutes } from './routes/teacher.js';
 import { securityMiddleware } from './security.js';
 
 // Mọi phụ thuộc của server gom vào một chỗ: route chỉ nhận ctx, test thay được từng phần.
-export function createAppContext(db: Db, opts: { now?: () => number; paths?: AppPaths } = {}) {
+export function createAppContext(db: Db, opts: { now?: () => number; paths?: AppPaths; github?: { fetch?: typeof fetch; token?: string } } = {}) {
   const now = opts.now ?? Date.now;
   return {
     db,
     now,
     paths: opts.paths ?? APP_PATHS,
+    github: opts.github ?? { token: process.env.GITHUB_TOKEN || undefined },
     users: createUserRepo(db, now),
     classes: createClassRepo(db, now),
     assignments: createAssignmentRepo(db, now),

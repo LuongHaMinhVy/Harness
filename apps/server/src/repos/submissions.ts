@@ -1,7 +1,17 @@
 import type { Submission, SubmittedFile } from '@harness/shared/api';
 import { transaction, type Db } from '../db/database.js';
 
-type Row = { id: number; assignment_id: number; student_id: number; version: number; files: string; submitted_at: number };
+type Row = {
+  id: number;
+  assignment_id: number;
+  student_id: number;
+  version: number;
+  files: string;
+  submitted_at: number;
+  source: 'upload' | 'github';
+  repo_url: string | null;
+  commit_sha: string | null;
+};
 
 const toSubmission = (r: Row): Submission => ({
   id: r.id,
@@ -10,6 +20,9 @@ const toSubmission = (r: Row): Submission => ({
   version: r.version,
   files: JSON.parse(r.files) as SubmittedFile[],
   submittedAt: r.submitted_at,
+  source: r.source,
+  githubUrl: r.repo_url,
+  commit: r.commit_sha,
 });
 
 export function createSubmissionRepo(db: Db, now: () => number = Date.now) {
@@ -20,12 +33,28 @@ export function createSubmissionRepo(db: Db, now: () => number = Date.now) {
       };
       return (r.v ?? 0) + 1;
     },
-    /** Ghi bản ghi trong transaction; `write` lưu file ra đĩa — lỗi thì không có bản ghi nào. */
-    create(assignmentId: number, studentId: number, version: number, files: SubmittedFile[]): Submission {
+    create(
+      assignmentId: number,
+      studentId: number,
+      version: number,
+      files: SubmittedFile[],
+      origin: { source: 'upload' } | { source: 'github'; url: string; commit: string } = { source: 'upload' },
+    ): Submission {
       return transaction(db, () => {
         const r = db
-          .prepare('INSERT INTO submissions (assignment_id, student_id, version, files, submitted_at) VALUES (?, ?, ?, ?, ?) RETURNING *')
-          .get(assignmentId, studentId, version, JSON.stringify(files), now()) as Row;
+          .prepare(
+            'INSERT INTO submissions (assignment_id, student_id, version, files, submitted_at, source, repo_url, commit_sha) VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING *',
+          )
+          .get(
+            assignmentId,
+            studentId,
+            version,
+            JSON.stringify(files),
+            now(),
+            origin.source,
+            origin.source === 'github' ? origin.url : null,
+            origin.source === 'github' ? origin.commit : null,
+          ) as Row;
         return toSubmission(r);
       });
     },

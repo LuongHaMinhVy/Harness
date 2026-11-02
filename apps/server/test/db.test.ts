@@ -16,6 +16,6 @@ test('migration tạo đủ bảng, bật foreign key, mở lại không chạy 
   expect((db.prepare('PRAGMA foreign_keys').get() as { foreign_keys: number }).foreign_keys).toBe(1);
   db.close();
   const again = openDatabase(file);
-  expect((again.prepare('SELECT COUNT(*) AS n FROM schema_migrations').get() as { n: number }).n).toBe(1);
+  expect((again.prepare('SELECT COUNT(*) AS n FROM schema_migrations').get() as { n: number }).n).toBe(2);
   again.close();
 });
