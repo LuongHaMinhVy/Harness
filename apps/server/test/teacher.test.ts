@@ -86,6 +86,20 @@ test('đặt lại mật khẩu học viên không thuộc lớp → 404', async
   expect((await as.gv.post(`/api/teacher/classes/${cls.id}/students/${users.lan.id}/reset-password`)).status).toBe(404);
 });
 
+test('học viên cũng học lớp của giảng viên khác → không giảng viên nào tự đặt lại mật khẩu được (nhờ admin)', async () => {
+  const { as, cls, users } = await withClass();
+  await as.gv.post(`/api/teacher/classes/${cls.id}/students`, { students: [{ username: 'nam', fullName: 'NAM' }] });
+  // gv2 tạo lớp riêng rồi thêm "nam" (đã có tài khoản) vào — trước đây gv2 đặt lại mật khẩu được và chiếm tài khoản.
+  const other = await as.gv2.json(as.gv2.post('/api/teacher/classes', { name: 'Lớp của gv2' }));
+  await as.gv2.post(`/api/teacher/classes/${other.id}/students`, { students: [{ username: 'nam', fullName: 'NAM' }] });
+  const byGv2 = await as.gv2.post(`/api/teacher/classes/${other.id}/students/${users.nam.id}/reset-password`);
+  expect(byGv2.status).toBe(403);
+  expect((await byGv2.json()).error).toMatch(/admin/);
+  expect((await as.gv.post(`/api/teacher/classes/${cls.id}/students/${users.nam.id}/reset-password`)).status).toBe(403);
+  expect((await as.nam.get('/api/auth/me')).status).toBe(200);
+  expect((await as.admin.post(`/api/admin/users/${users.nam.id}/reset-password`)).status).toBe(200);
+});
+
 test('xoá học viên khỏi lớp', async () => {
   const { as, cls, users } = await withClass();
   await as.gv.post(`/api/teacher/classes/${cls.id}/students`, { students: [{ username: 'nam', fullName: 'NAM' }] });

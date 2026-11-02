@@ -27,6 +27,16 @@ export async function startWebServer(o: StartOptions): Promise<void> {
   const db = openDatabase(o.paths.dbFile ?? 'data/app.db');
   const harness = createWebSession({ model: o.model, modelName: o.modelName, ...o.paths, maxSteps: o.maxSteps });
   const ctx = createAppContext(db, { paths: o.paths, model: o.model, modelName: o.modelName, maxSteps: o.maxSteps, harness });
+  // Chỉ server mới làm việc này (không phải lệnh CLI như admin:create chạy song song): lần chấm còn dở từ lần chạy
+  // trước coi như lỗi để chấm lại được.
+  ctx.gradings.failInterrupted();
+  const purge = () => {
+    ctx.sessions.purgeExpired();
+    ctx.loginLimiter.purge();
+    ctx.ipLimiter.purge();
+  };
+  purge();
+  setInterval(purge, 60 * 60_000).unref();
   await o.prepare?.(ctx);
 
   const hasUi = existsSync(STATIC_ROOT);

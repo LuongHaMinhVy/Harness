@@ -4,6 +4,7 @@ import type { AppContext } from '../app.js';
 import { readAssignmentTests, uniqueSlug, writeAssignmentFiles } from '../assignments/files.js';
 import { requireAuth, requireRole, type AppEnv } from '../auth/middleware.js';
 import { generateTempPassword, hashPassword } from '../auth/password.js';
+import { transaction } from '../db/database.js';
 import { idParam, parseJson } from './parse.js';
 
 const NOT_FOUND = { error: 'Không tìm thấy' } as const;
@@ -73,6 +74,11 @@ export function teacherRoutes(ctx: AppContext) {
     const user = c.get('user')!;
     const cls = id && ctx.classes.getFor(id, user);
     if (!cls || !studentId || !ctx.classes.isMember(cls.id, studentId)) return c.json(NOT_FOUND, 404);
+    // Học viên học cả lớp của giảng viên khác: không để một giảng viên đặt lại mật khẩu (rồi đăng nhập thay)
+    // tài khoản mà giảng viên khác cũng quản lý — việc này dành cho admin.
+    if (user.role !== 'admin' && ctx.classes.sharedWithOtherTeacher(studentId, user.id)) {
+      return c.json({ error: 'Học viên này còn học lớp của giảng viên khác — nhờ admin đặt lại mật khẩu' }, 403);
+    }
     const tempPassword = generateTempPassword();
     ctx.users.setPassword(studentId, await hashPassword(tempPassword), true);
     ctx.sessions.destroyAllForUser(studentId);
@@ -101,8 +107,12 @@ export function teacherRoutes(ctx: AppContext) {
     if (!ctx.classes.getFor(body.classId, user)) return c.json(NOT_FOUND, 404);
     const { tests, ...input } = body;
     const slug = uniqueSlug(body.title, ctx.assignments.slugTaken, ctx.webDir);
-    writeAssignmentFiles(ctx.webDir, slug, body);
-    const a = ctx.assignments.create(slug, input, user.id);
+    // Ghi DB và file đề cùng một transaction: lỗi ở bước nào cũng không để lại đề thiếu file hay thư mục mồ côi.
+    const a = transaction(ctx.db, () => {
+      const created = ctx.assignments.create(slug, input, user.id);
+      writeAssignmentFiles(ctx.webDir, slug, body);
+      return created;
+    });
     ctx.audit.log(user.id, 'assignment_created', a.slug, { assignmentId: a.id, tests: tests.length });
     return c.json(a, 201);
   });

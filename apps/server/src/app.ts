@@ -57,7 +57,6 @@ export function createAppContext(db: Db, opts: ContextOptions = {}) {
   const submissions = createSubmissionRepo(db, now);
   const gradings = createGradingRepo(db, now);
   const gradingEvents = createEventHub<GradingEvent>();
-  gradings.failInterrupted();
 
   return {
     db,

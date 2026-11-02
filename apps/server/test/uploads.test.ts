@@ -17,6 +17,10 @@ const errorOf = (fn: () => unknown) => {
 
 // --- đường dẫn ---
 
+test('checkPath từ chối thư mục/file kết thúc bằng dấu chấm hoặc khoảng trắng (Windows bỏ đi → trùng file khác)', () => {
+  for (const bad of ['src./a.js', 'src /a.js', 'a.js.', 'a.js ', 'lib/x ./b.js']) expect(() => checkPath(bad), bad).toThrow(UploadError);
+});
+
 test('checkPath chuẩn hoá \\ thành /, bỏ ./ đầu', () => {
   expect(checkPath('src\\lib\\util.js')).toBe('src/lib/util.js');
   expect(checkPath('./index.js')).toBe('index.js');

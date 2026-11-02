@@ -74,7 +74,7 @@ export function SubmissionsPage() {
         actions={
           <div className="grade-all">
             <label className="checkbox">
-              <input type="checkbox" checked={regrade} onChange={(e) => setRegrade(e.target.checked)} /> chấm lại cả bài đã duyệt
+              <input type="checkbox" checked={regrade} onChange={(e) => setRegrade(e.target.checked)} /> chấm lại cả bài đã chấm/đã duyệt
             </label>
             <button type="button" onClick={() => gradeAll.mutate()} disabled={gradeAll.isPending || submitted === 0}>
               Chấm tất cả

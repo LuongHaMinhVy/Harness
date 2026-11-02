@@ -63,6 +63,14 @@ export function createClassRepo(db: Db, now: () => number = Date.now) {
     removeMember(classId: number, studentId: number): boolean {
       return Number(db.prepare('DELETE FROM class_members WHERE class_id = ? AND student_id = ?').run(classId, studentId).changes) > 0;
     },
+    /** Học viên có học lớp nào của giảng viên khác teacherId không. */
+    sharedWithOtherTeacher(studentId: number, teacherId: number): boolean {
+      return (
+        db
+          .prepare('SELECT 1 FROM class_members m JOIN classes c ON c.id = m.class_id WHERE m.student_id = ? AND c.teacher_id <> ? LIMIT 1')
+          .get(studentId, teacherId) !== undefined
+      );
+    },
     classIdsOfStudent(studentId: number): number[] {
       return (db.prepare('SELECT class_id FROM class_members WHERE student_id = ?').all(studentId) as { class_id: number }[]).map((r) => r.class_id);
     },

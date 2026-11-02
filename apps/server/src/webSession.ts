@@ -30,6 +30,10 @@ export type WebSessionDeps = {
 
 export type WebSession = ReturnType<typeof createWebSession>;
 
+// Harness của admin chỉ đọc đề và bài mẫu trong dataDir — không đọc database (hash mật khẩu) hay đề/bài nộp
+// của web lớp học (data/web*), vì nội dung đọc được sẽ gửi lên model.
+const HARNESS_SCOPE = ['assignments/', 'submissions/'];
+
 const stamp = () => new Date().toISOString().replaceAll(':', '-');
 
 function savedStudents(step: StepLog): string[] {
@@ -57,7 +61,7 @@ export function createWebSession(d: WebSessionDeps) {
   const approver = createWebApprover({ emit, turn: () => questionNo, timeoutMs: d.approvalTimeoutMs });
   const cache = createTestCache(d.cacheFile);
   const system = buildSystemPrompt(d.dataDir);
-  const tools = createTools({ dataDir: d.dataDir, cache, approve: approver.approve, gradesFile: d.gradesFile });
+  const tools = createTools({ dataDir: d.dataDir, cache, approve: approver.approve, gradesFile: d.gradesFile, readScope: HARNESS_SCOPE });
 
   // Chạy một việc nền; lỗi ngoài dự kiến cũng không để server kẹt ở trạng thái bận.
   function start(kind: Exclude<BusyKind, null>, work: () => Promise<void>, onCrash: () => void) {
@@ -117,7 +121,7 @@ export function createWebSession(d: WebSessionDeps) {
         const evalAsk = createEvalAsk({
           model: d.model,
           system,
-          tools: createTools({ dataDir: d.dataDir, cache, approve: autoApprove, gradesFile: d.evalGradesFile }),
+          tools: createTools({ dataDir: d.dataDir, cache, approve: autoApprove, gradesFile: d.evalGradesFile, readScope: HARNESS_SCOPE }),
           maxSteps: state.maxSteps,
           logger: createLogger({ file: join(d.logDir, `eval-web-${stamp()}.jsonl`), print: () => {} }),
         });

@@ -48,6 +48,18 @@ test('ask phát sự kiện theo thứ tự và snapshot giữ transcript', asyn
   expect(session.snapshot().busy).toBe(false);
 });
 
+test('Harness của admin chỉ đọc được đề và bài mẫu, không đọc database hay dữ liệu web lớp học', async () => {
+  const { session } = setup([
+    { tools: [{ name: 'read_file', input: { path: 'app.db' } }, { name: 'read_file', input: { path: 'web/submissions/x/nam/v1/index.js' } }] },
+    { text: 'xong' },
+  ]);
+  session.ask('Đọc database');
+  await session.idle();
+  const outputs = session.snapshot().turns[0].steps[0].toolCalls.map((t) => JSON.stringify(t.output));
+  expect(outputs).toHaveLength(2);
+  for (const o of outputs) expect(o).toContain('outside_scope');
+});
+
 test('save_grade chờ duyệt: snapshot có thẻ pending; approve → grade-saved và điểm được ghi', async () => {
   const { session, events } = setup([{ tools: [grade('nam')] }, { text: 'Đã lưu' }]);
   session.ask('Chấm bài của Nam');

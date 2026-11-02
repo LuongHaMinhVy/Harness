@@ -31,6 +31,8 @@ export function checkPath(raw: string): string {
   const parts = path.split('/');
   if (parts.some((p) => p === '' || p === '.' || p === '..')) throw bad('không được chứa "..", "." hoặc "//"');
   if (parts.some((p) => p.startsWith('.'))) throw bad('không nhận file/thư mục ẩn');
+  // Windows bỏ dấu chấm/khoảng trắng cuối tên: "src./a.js" và "src/a.js" sẽ ghi đè lên nhau.
+  if (parts.some((p) => /[. ]$/.test(p))) throw bad('tên thư mục/file không được kết thúc bằng dấu chấm hoặc khoảng trắng');
   const ext = path.slice(path.lastIndexOf('.')).toLowerCase();
   if (!path.includes('.') || !ALLOWED_EXTENSIONS.includes(ext)) throw bad(`chỉ nhận ${ALLOWED_EXTENSIONS.join(' ')}`);
   return path;

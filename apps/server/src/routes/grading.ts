@@ -47,7 +47,8 @@ export function gradingRoutes(ctx: AppContext) {
     if (body instanceof Response) return body;
     let queued = 0;
     for (const sub of ctx.submissions.latestForAssignment(a.id)) {
-      if (!body.regrade && ctx.grades.forSubmission(sub.id)) continue;
+      // Không đánh dấu "chấm lại" thì bỏ qua bài đã có điểm duyệt hoặc AI đã chấm xong; bài chấm lỗi được chấm lại.
+      if (!body.regrade && (ctx.grades.forSubmission(sub.id) || ctx.gradings.latestForSubmission(sub.id)?.status === 'done')) continue;
       if (ctx.grading.request(sub.id, user.id)) queued++;
     }
     ctx.audit.log(user.id, 'grade_all', a.slug, { queued, regrade: !!body.regrade });

@@ -100,7 +100,7 @@ test('lỗi API khi chấm → grading lỗi kèm thông báo, server vẫn ch�
   expect((await as.gv.post(`/api/teacher/submissions/${sub.id}/grade`)).status).toBe(202);
 });
 
-test('chấm tất cả: chỉ xếp hàng bài mới nhất chưa có điểm duyệt; đang chấm thì không xếp trùng', async () => {
+test('chấm tất cả: chỉ xếp hàng bài mới nhất chưa chấm; đang chấm thì không xếp trùng', async () => {
   const { as, a, submit, ctx } = await setup();
   await submit(as.nam, { 'index.js': GOOD });
   await submit(as.lan, { 'index.js': EMPTY_FAIL });
@@ -111,6 +111,10 @@ test('chấm tất cả: chỉ xếp hàng bài mới nhất chưa có điểm d
   await ctx.grading.idle();
   const rows = await as.gv.json(as.gv.get(`/api/teacher/assignments/${a.id}/submissions`));
   expect(rows.map((r: { grading: { aiScore: number } }) => r.grading.aiScore)).toEqual([9, 9]);
+  // AI đã chấm xong (dù chưa duyệt) thì không chấm lại — tránh tốn lượt gọi và thay mất đề xuất giảng viên đang xem.
+  expect((await as.gv.json(as.gv.post(`/api/teacher/assignments/${a.id}/grade-all`, {}))).queued).toBe(0);
+  expect((await as.gv.json(as.gv.post(`/api/teacher/assignments/${a.id}/grade-all`, { regrade: true }))).queued).toBe(2);
+  await ctx.grading.idle();
 });
 
 test('giảng viên khác không xem/chấm/duyệt được (404); học viên gọi API giảng viên → 403', async () => {

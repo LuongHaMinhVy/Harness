@@ -26,7 +26,8 @@ export const UsernameSchema = z
   .trim()
   .min(2)
   .max(40)
-  .regex(/^[a-zA-Z0-9._-]+$/, 'Tên đăng nhập chỉ gồm chữ không dấu, số và . _ -');
+  // Dùng làm tên thư mục bài nộp: bắt đầu và kết thúc bằng chữ/số (không ".", "..", không dấu chấm cuối).
+  .regex(/^[a-zA-Z0-9](?:[a-zA-Z0-9._-]*[a-zA-Z0-9])?$/, 'Tên đăng nhập chỉ gồm chữ không dấu, số và . _ -, bắt đầu và kết thúc bằng chữ hoặc số');
 
 export const LoginBody = z.object({ username: z.string().trim().min(1).max(40), password: z.string().min(1).max(PASSWORD_MAX) });
 export const ChangePasswordBody = z.object({ currentPassword: z.string().min(1).max(PASSWORD_MAX), newPassword: PasswordSchema });

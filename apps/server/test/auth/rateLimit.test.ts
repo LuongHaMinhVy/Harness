@@ -33,3 +33,25 @@ test('đăng nhập đúng → xoá bộ đếm', () => {
   limiter.fail('user:nam');
   expect(limiter.isLocked('user:nam')).toBe(false);
 });
+
+test('lần sai cũ quá 15 phút không còn tính: lỗi gõ nhầm rải rác (cùng IP) không cộng dồn thành khoá', () => {
+  const { limiter, tick } = setup();
+  for (let i = 0; i < 5; i++) {
+    limiter.fail('ip:127.0.0.1');
+    expect(limiter.isLocked('ip:127.0.0.1')).toBe(false);
+    tick(20 * 60_000);
+  }
+  for (let i = 0; i < 4; i++) limiter.fail('ip:127.0.0.1');
+  expect(limiter.isLocked('ip:127.0.0.1')).toBe(false);
+});
+
+test('purge xoá bản ghi đã hết hạn, giữ bản ghi còn hiệu lực', () => {
+  const { limiter, tick } = setup();
+  limiter.fail('user:cu');
+  tick(15 * 60_000 + 1);
+  limiter.fail('user:moi');
+  expect(limiter.purge()).toBe(1);
+  limiter.fail('user:moi');
+  for (let i = 0; i < 3; i++) limiter.fail('user:moi');
+  expect(limiter.isLocked('user:moi')).toBe(true);
+});

@@ -72,12 +72,12 @@ pnpm web:lan        # lắng nghe mọi địa chỉ, tự nhận IPv4 của má
 
 ### Bảo mật
 
-- **Mật khẩu** băm scrypt; khoá 15 phút sau 5 lần sai; thông báo chung "Sai tài khoản hoặc mật khẩu".
+- **Mật khẩu** băm scrypt; sai 5 lần trong 15 phút thì khoá tài khoản 15 phút (30 lần thì khoá theo IP); thông báo chung "Sai tài khoản hoặc mật khẩu".
 - **Phiên** là cookie `HttpOnly; SameSite=Strict` (+ `Secure` khi HTTPS), database chỉ lưu hash của token; đổi mật khẩu thì huỷ mọi phiên cũ.
-- **Phân quyền** kiểm tra phía server cho mọi truy vấn: học viên chỉ thấy bài/điểm của mình, giảng viên chỉ thấy lớp/đề của mình; truy cập trái phép trả 404.
+- **Phân quyền** kiểm tra phía server cho mọi truy vấn: học viên chỉ thấy bài/điểm của mình, giảng viên chỉ thấy lớp/đề của mình; truy cập trái phép trả 404; học viên học lớp của nhiều giảng viên thì chỉ admin đặt lại mật khẩu được.
 - **Chặn request từ website khác**: kiểm tra `Host`, `Origin`, `Sec-Fetch-Site`, `Content-Type`; CSP `default-src 'self'`; giới hạn body (16 KB, riêng nộp bài 2 MB).
 - **Upload**: ≤ 50 file, mỗi file ≤ 512 KB, chỉ `.js .cjs .mjs .json .md .txt`, chặn `..`/đường dẫn tuyệt đối/file ẩn; không nhận file nén. **GitHub**: chỉ gọi `api.github.com`/`codeload.github.com`, không theo redirect, repo ≤ 20 MB, giải nén có đếm byte thật.
-- **Runner cô lập** (Node Permission Model): bài nộp chỉ đọc được thư mục của chính nó; không ghi file, không chạy lệnh, không thấy biến môi trường (API key), giới hạn 64 MB RAM, 3 giây, 1 MB output. **Node 24 chưa chặn được mạng** — chấm bài của người lạ thì nên chạy server trong container không có mạng.
+- **Runner cô lập** (Node Permission Model): bài nộp chỉ đọc được thư mục của chính nó (không đọc được bộ test — test gửi qua stdin); không ghi file, không chạy lệnh/worker/inspector, không thấy biến môi trường (API key); intrinsic bị đóng băng và `assert` dùng chung bị khoá nên bài nộp không sửa được kết quả so sánh; kết quả chỉ nhận qua kênh riêng kèm mã ngẫu nhiên mỗi lần chạy nên không in kết quả giả được; giới hạn 3 giây, 1 MB output, heap 64 MB (Buffer không tính vào heap). **Mạng:** Node 24 chưa có quyền chặn mạng, runner chặn ở các API (`net`, `http`, `fetch`, `dgram`, `dns`) — đủ cho lớp học nội bộ; chấm bài của người lạ thì nên chạy server trong container không có mạng (`docker run --network none`).
 - **Chống prompt injection**: system prompt coi code nộp là dữ liệu; điểm chức năng theo kết quả test; cờ cảnh báo; giảng viên luôn duyệt.
 - **Dữ liệu gửi ra ngoài**: khi chấm, nội dung bài nộp được gửi tới API Gemini của Google (free tier có thể dùng dữ liệu để cải thiện sản phẩm). Database, đề và bài nộp tạo trên web (`data/app*.db`, `data/web/`, `data/web-mock/`) không đưa lên git; muốn làm lại từ đầu thì xoá cả database lẫn thư mục `data/web*` đi kèm.
 

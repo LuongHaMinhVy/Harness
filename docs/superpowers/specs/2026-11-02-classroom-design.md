@@ -80,3 +80,10 @@ Unit (mật khẩu, phiên, khoá đăng nhập, zip/upload, CSV), sandbox (bài
 4. Runner cô lập + locator + `list_files` + hàng đợi chấm + thẻ kết quả + duyệt/sửa.
 5. Admin (Harness, tài khoản, nhật ký) + Hỏi trợ lý.
 6. LAN/HTTPS + `seed:demo` + README + kiểm tra trình duyệt + review.
+
+## 10. Khác với thiết kế ban đầu (đã chốt khi làm)
+
+- **Nộp bài:** bỏ nộp `.zip` trực tiếp; học viên nộp file rời, cả thư mục, hoặc link GitHub public (ghim commit lúc nộp). Zip chỉ còn dùng nội bộ khi tải archive từ GitHub.
+- **Lưu trữ:** đề và bài nộp của web nằm trong `data/web/` (bản mock: `data/web-mock/`), tách khỏi dữ liệu mẫu của CLI.
+- **Sandbox:** chưa làm chế độ `SANDBOX=docker`. Runner Node chặn mạng ở mức API, ẩn bộ test (gửi qua stdin), đóng băng intrinsic và `assert`, nhận kết quả qua fd 3 kèm nonce. Chấm bài người lạ: chạy cả server trong container `--network none`.
+- **"Hỏi trợ lý" theo từng đề cho giảng viên:** chưa làm; chỉ có trang Harness của admin.
