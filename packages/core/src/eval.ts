@@ -8,6 +8,15 @@ export type { EvalReport, EvalRow, Golden, Outcome };
 
 const pct = (n: number, total: number) => (total ? Math.round((n / total) * 1000) / 10 : 0);
 
+// `pnpm eval nam hung`: chỉ chấm nhóm được chọn — cả bộ 5 bài tốn ~20–25 lần gọi, bằng cả quota free tier một ngày.
+export function pickGolden(golden: Golden, names: string[]): Golden {
+  if (!names.length) return golden;
+  const wanted = names.map((n) => n.trim().toLowerCase());
+  const unknown = wanted.filter((n) => !(n in golden));
+  if (unknown.length) throw new Error(`Không có trong eval/golden.json: ${unknown.join(', ')} (có: ${Object.keys(golden).join(', ')})`);
+  return Object.fromEntries(Object.entries(golden).filter(([k]) => wanted.includes(k)));
+}
+
 export function scoreEval(golden: Golden, outcomes: Outcome[]): EvalReport {
   const rows: EvalRow[] = Object.entries(golden).map(([student, gold]) => {
     const o = outcomes.find((x) => x.student === student) ?? { student, aiScore: null, answer: '', costUsd: 0 };

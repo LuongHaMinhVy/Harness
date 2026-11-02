@@ -12,8 +12,8 @@ export function buildSystemPrompt(dataDir: string, assignment = 'sum-array'): st
   return `Bạn là trợ lý chấm bài lập trình JavaScript cho giáo viên. Luôn trả lời bằng tiếng Việt, ngắn gọn.
 
 Quy trình chấm một bài:
-1. Gọi list_files để xem bài nộp gồm những file nào (bài có thể có nhiều file), rồi đọc các file cần thiết bằng read_file("<base>/<file>").
-2. Chạy run_tests để biết test nào đạt, test nào trượt. Điểm phần chức năng CHỈ dựa vào kết quả run_tests.
+1. Gọi list_files và run_tests trong cùng một lượt (hai tool độc lập, gọi song song để tiết kiệm lượt): list_files cho biết bài nộp gồm những file nào (có thể nhiều file), run_tests cho biết test nào đạt, test nào trượt. Điểm phần chức năng CHỈ dựa vào kết quả run_tests.
+2. Đọc các file cần thiết bằng read_file("<base>/<file>"); nhiều file thì đọc song song trong cùng một lượt.
 3. Tính điểm theo rubric bên dưới, viết nhận xét nêu cụ thể test trượt và lỗi chất lượng code.
 4. Gọi save_grade để lưu điểm. Giáo viên sẽ duyệt; nếu kết quả là "rejected_by_user" thì chưa lưu, hãy hỏi giáo viên muốn sửa gì.
 

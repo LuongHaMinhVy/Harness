@@ -89,7 +89,7 @@ pnpm web:lan        # lắng nghe mọi địa chỉ, tự nhận IPv4 của má
 
 ```bash
 pnpm start       # trò chuyện với trợ lý chấm bài trên dữ liệu mẫu
-pnpm eval        # chấm cả 5 bài mẫu và so với điểm giáo viên
+pnpm eval        # chấm cả 5 bài mẫu và so với điểm giáo viên (`pnpm eval nam hung`: chỉ vài bài)
 pnpm test        # toàn bộ unit test
 pnpm typecheck   # kiểm tra kiểu cả 5 package
 pnpm spike       # kiểm tra prompt cache và giới hạn lượt trên Gemini thật
@@ -117,16 +117,25 @@ Bài `sum-array` (`data/assignments/sum-array/`) và 5 bài nộp (`data/submiss
 - **Giới hạn free tier** (`gemini-2.5-flash`, đo ngày 2026-11-02): **20 lần gọi model mỗi ngày**, reset khoảng 15:00 giờ Việt Nam; một câu "Chấm bài của X" tốn ~5 lần gọi. Bị chặn theo phút thì harness tự chờ đúng thời gian Gemini yêu cầu rồi gọi lại lượt đó (`⏳ … đợi 15s`); hết quota ngày thì báo rõ, không treo.
 - Phanh của mỗi câu hỏi: tối đa N lượt (`MAX_STEPS`, `/steps N`), 4.096 token output mỗi lượt, 120 giây cả câu, 3 giây mỗi lần chạy test.
 
-## Kịch bản demo (≤ 5 phút)
+## Kịch bản demo (≤ 5 phút) — vừa quota free tier
 
-| Thời gian | Nội dung | Thao tác |
-|---|---|---|
-| 0:00–0:30 | Giới thiệu bài toán | Học viên nộp bài → AI chấm → giảng viên duyệt |
-| 0:30–1:30 | Câu bình thường | Admin → Harness: "Chấm bài của Nam" → log từng lượt, duyệt, chi phí (hoặc CLI `pnpm start`) |
-| 1:30–2:15 | Câu dựa vào câu trước | "So với bài của Lan thì ai tốt hơn?" → cache và `CACHE HIT` |
-| 2:15–3:30 | Gây lỗi | "Chấm bài của Hùng" (timeout) → "Chấm bài của Tuấn" (không tồn tại) → Lượt tối đa = 2 + "Chấm bài của Minh" (hết lượt) |
-| 3:30–4:45 | Nâng cao | Học viên nộp bài (thư mục/GitHub) → giảng viên Chấm tất cả → cờ cảnh báo → Sửa điểm rồi duyệt; bộ đánh giá → MAE |
-| 4:45–5:00 | Kết | Link repo |
+Free tier `gemini-2.5-flash` chỉ có **20 lần gọi/ngày** (reset ~15:00 giờ VN). Kịch bản dưới đây tốn khoảng **16 lần**, còn dư cho vài câu quay lại. Log in `Quota free tier hôm nay: N/20` sau mỗi câu để theo dõi.
+
+| Thời gian | Nội dung | Thao tác | Lần gọi |
+|---|---|---|---|
+| 0:00–0:30 | Giới thiệu bài toán | Học viên nộp bài → AI đọc code, chạy test trong sandbox → đề xuất điểm → giảng viên duyệt | 0 |
+| 0:30–1:30 | Câu bình thường | `pnpm start` (hoặc Admin → Harness): "Chấm bài của Nam" → log từng lượt (tool, input, kết quả, token, cache, thinking), bảng duyệt điểm, tổng chi phí | ~4 |
+| 1:30–2:15 | Câu dựa vào câu trước | "So với bài của Lan thì ai tốt hơn?" (không nhắc lại Nam) → `cache … %` của Gemini, `CACHE HIT` | ~3–4 |
+| 2:15–3:15 | Gây lỗi | "Chấm bài của Tuấn" (không có bài → tool báo lỗi, model giải thích) → `/steps 2` + "Chấm bài của Minh" (hết lượt → lượt cuối vẫn trả lời bằng thông tin đã có) | ~4–5 |
+| 3:15–4:45 | Nâng cao | **Duyệt trước khi ghi** (đã thấy ở câu 1: `y`/`n`; thử `n` → điểm không lưu) · web lớp học: giảng viên bấm **Chấm** một bài → cờ cảnh báo → Sửa điểm rồi duyệt → học viên thấy điểm | ~4 |
+| 4:45–5:00 | Kết | Link repo | 0 |
+
+Mẹo khi chỉ có free tier:
+
+- **Tập trước bằng model giả, không tốn quota:** `pnpm web:mock` → đăng nhập `admin` / `demo-12345` → trang Harness, hỏi đúng các câu trên.
+- Ngày quay **không chạy** `pnpm spike` hay thử trước bằng Gemini. Không bấm "Chấm tất cả" với Gemini thật (5 bài ≈ 20 lần gọi).
+- Bộ đánh giá chạy vào **ngày khác**, theo nhóm: `pnpm eval nam hung` (~8–10 lần gọi) rồi `pnpm eval lan an minh`; quay hoặc chụp bảng MAE để chèn vào phần nâng cao.
+- Bị chặn theo phút thì harness tự chờ (`⏳ … đợi 15s`), cứ để nó chạy; hết quota ngày thì log báo rõ — cũng là một cảnh "xử lý lỗi" hợp lệ.
 
 ## Tài liệu thiết kế
 

@@ -1,6 +1,6 @@
 import { APICallError } from 'ai';
 import { expect, test, vi } from 'vitest';
-import { extractScore, retryOnRateLimit, scoreEval, type Golden, type Outcome } from '../src/eval.js';
+import { extractScore, pickGolden, retryOnRateLimit, scoreEval, type Golden, type Outcome } from '../src/eval.js';
 import type { StepLog } from '../src/logger.js';
 
 const golden: Golden = {
@@ -66,4 +66,11 @@ test('retryOnRateLimit: 429 hai lần → ném lỗi sau một lần thử lại
   const fn = vi.fn().mockRejectedValue(rateLimit());
   await expect(retryOnRateLimit(fn, { waitMs: 1, sleep: async () => {} })).rejects.toBeInstanceOf(APICallError);
   expect(fn).toHaveBeenCalledTimes(2);
+});
+
+test('pickGolden: chỉ chấm nhóm học viên được chọn (free tier 20 lần gọi/ngày), không chọn thì chấm hết; tên lạ → lỗi', () => {
+  const golden: Golden = { nam: { score: 10, mustMention: [] }, lan: { score: 9, mustMention: [] }, hung: { score: 0, mustMention: [] } };
+  expect(Object.keys(pickGolden(golden, []))).toEqual(['nam', 'lan', 'hung']);
+  expect(Object.keys(pickGolden(golden, ['Hung', 'nam']))).toEqual(['nam', 'hung']);
+  expect(() => pickGolden(golden, ['tuan'])).toThrow(/tuan/);
 });

@@ -5,6 +5,7 @@ import pc from 'picocolors';
 import { runQuestion } from '@harness/core/agent';
 import { createConsoleApprover } from '@harness/core/approval';
 import { createLogger } from '@harness/core/logger';
+import { countCalls, createQuotaCounter } from '@harness/core/quota';
 import { withRateLimitRetry } from '@harness/core/rateLimit';
 import { buildSystemPrompt } from '@harness/core/prompt';
 import { createSession } from '@harness/core/session';
@@ -35,7 +36,9 @@ const system = buildSystemPrompt(DATA_DIR);
 let questionNo = 0;
 
 // Gói miễn phí giới hạn số lần gọi mỗi phút: bị chặn thì chờ đúng thời gian Gemini yêu cầu rồi gọi lại lượt đó.
-const model = withRateLimitRetry(google(modelId), {
+// Free tier chỉ có 20 lần gọi/ngày: đếm lại để biết còn bao nhiêu lượt cho buổi demo.
+const quota = createQuotaCounter(`.cache/quota-${modelId}.json`);
+const model = withRateLimitRetry(countCalls(google(modelId), quota.record), {
   onWait: (ms) => console.log(pc.yellow(`         ⏳ Gemini giới hạn tốc độ (free tier) — đợi ${Math.round(ms / 1000)}s rồi gọi lại lượt này…`)),
 });
 
@@ -45,19 +48,21 @@ const session = createSession({
   costReport: () => {
     const t = logger.sessionTotal();
     const cache = t.cached === null ? 'n/a' : t.cached.toLocaleString('en-US');
-    return `Cả phiên: ${t.questions} câu · in ${t.input.toLocaleString('en-US')} (cache ${cache}) · out ${t.output} · ≈ $${t.costUsd.toFixed(6)} (quy đổi)`;
+    return `Cả phiên: ${t.questions} câu · in ${t.input.toLocaleString('en-US')} (cache ${cache}) · out ${t.output} · ≈ $${t.costUsd.toFixed(6)} (quy đổi)\n${quota.label()}`;
   },
   run: async (history, steps) => {
     const last = history.at(-1);
     logger.startQuestion(++questionNo, typeof last?.content === 'string' ? last.content : '');
     const outcome = await runQuestion({ model, system, history, tools, maxSteps: steps, onStep: logger.step });
     logger.endQuestion(outcome.steps, outcome.totalMs, outcome.hitLimit, steps);
+    console.log(pc.dim(quota.label()));
     return outcome;
   },
 });
 
 console.log(pc.bold('Trợ lý chấm bài lập trình — bài tập sum-array'));
 console.log(pc.dim(`Model: ${modelId} · tối đa ${maxSteps} lượt/câu · /steps N · /reset · /cost · /exit`));
+console.log(pc.dim(quota.label()));
 
 rl.on('SIGINT', () => {
   rl.close();

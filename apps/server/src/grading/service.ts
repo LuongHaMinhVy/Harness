@@ -88,7 +88,7 @@ export function createGradingService(d: GradingDeps) {
     const steps: StepLog[] = [];
     const question =
       `Chấm bài nộp của học viên "${student.username}" (${student.fullName}) cho bài "${a.slug}", phiên bản ${sub.version}. ` +
-      `File chính: ${a.entryFile}. Gọi list_files trước, chạy run_tests, rồi gọi save_grade.`;
+      `File chính: ${a.entryFile}. Gọi list_files và run_tests trong cùng một lượt, đọc file cần thiết, rồi gọi save_grade.`;
     try {
       const out = await runQuestion({
         model: d.model,
