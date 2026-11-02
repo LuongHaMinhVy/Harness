@@ -1,8 +1,8 @@
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
-import { isAbsolute, join, relative, resolve } from 'node:path';
+import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { tool } from 'ai';
 import { z } from 'zod';
-import type { Approver } from './approval.js';
+import type { Approver, GradeRequest } from './approval.js';
 import { runSubmission } from './sandbox.js';
 import type { TestCache } from './toolCache.js';
 
@@ -36,6 +36,17 @@ export function safeTool<A, R>(fn: (args: A) => Promise<R>): (args: A) => Promis
 }
 
 export type ToolDeps = { dataDir: string; cache: TestCache; approve: Approver; gradesFile: string; timeoutMs?: number };
+
+type GradeRecord = GradeRequest & { savedAt: string };
+
+function readGrades(file: string): GradeRecord[] {
+  try {
+    const data = JSON.parse(readFileSync(file, 'utf8'));
+    return Array.isArray(data) ? data : [];
+  } catch {
+    return [];
+  }
+}
 
 export function normalizeStudent(name: string): string {
   return name.trim().toLowerCase().replace(/\.js$/, '');
@@ -116,6 +127,30 @@ export function createTools(deps: ToolDeps) {
         const result = await runSubmission(file, testsFile, deps.timeoutMs);
         deps.cache.set(key, result);
         return { ...result, cached: false, durationMs: Date.now() - started };
+      }),
+    }),
+
+    save_grade: tool({
+      description:
+        'Lưu điểm cuối cùng (0–10) và nhận xét cho một bài nộp. Giáo viên phải duyệt trước khi ghi; ' +
+        'nếu trả về "rejected_by_user" thì chưa lưu gì, hãy hỏi giáo viên muốn sửa thế nào.',
+      inputSchema: z.object({
+        assignment: z.string(),
+        student: z.string(),
+        score: z.number().min(0).max(10),
+        comments: z.string().min(1),
+      }),
+      execute: safeTool(async (req: GradeRequest) => {
+        submissionFile(req.assignment, req.student);
+        const student = normalizeStudent(req.student);
+        const assignment = req.assignment.trim().toLowerCase();
+        if (!(await deps.approve({ ...req, student, assignment }))) return { status: 'rejected_by_user' as const };
+
+        const grades = readGrades(deps.gradesFile).filter((g) => !(g.assignment === assignment && g.student === student));
+        grades.push({ assignment, student, score: req.score, comments: req.comments, savedAt: new Date().toISOString() });
+        mkdirSync(dirname(deps.gradesFile), { recursive: true });
+        writeFileSync(deps.gradesFile, JSON.stringify(grades, null, 2));
+        return { status: 'saved' as const };
       }),
     }),
   };
