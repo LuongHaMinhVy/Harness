@@ -24,6 +24,15 @@ export const APP_PATHS: AppPaths = {
   webDir: 'data/web',
 };
 
+// `pnpm web:demo`: Gemini thật trên dữ liệu demo riêng — tập/quay video không đụng lớp thật.
+export const DEMO_PATHS: AppPaths = {
+  ...APP_PATHS,
+  gradesFile: 'data/grades-demo.json',
+  evalGradesFile: 'data/grades-eval-demo.json',
+  dbFile: 'data/app-demo.db',
+  webDir: 'data/web-demo',
+};
+
 // `pnpm web:mock` dùng file điểm riêng để điểm do model giả chấm không ghi đè điểm giáo viên đã duyệt.
 export const MOCK_PATHS: AppPaths = {
   ...APP_PATHS,

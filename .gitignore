@@ -13,3 +13,8 @@ data/app*.db-*
 # Đề và bài nộp tạo trên web là dữ liệu của lớp — không đưa lên git
 data/web/
 data/web-mock/
+data/web-demo/
+data/grades-demo.json
+data/grades-eval-demo.json
+video/record/node_modules/
+video/record/out/

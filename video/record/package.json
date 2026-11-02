@@ -1,0 +1,9 @@
+{
+  "name": "harness-video-record",
+  "private": true,
+  "type": "module",
+  "description": "Quay màn hình thật của web lớp học (Gemini thật hoặc model giả) bằng Chrome headless để dựng video nộp bài.",
+  "dependencies": {
+    "puppeteer-core": "25.16.0"
+  }
+}

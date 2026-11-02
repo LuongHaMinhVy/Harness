@@ -13,6 +13,16 @@ const STUDENTS: [string, string][] = [
   ['minh', 'Đỗ Minh'],
 ];
 
+// Dữ liệu demo + tài khoản admin "admin", cùng một mật khẩu đã biết — cho web:mock và web:demo (database riêng,
+// không phải lớp thật).
+export async function seedDemoAccounts(ctx: AppContext, password: string): Promise<{ created: boolean }> {
+  const seeded = await seedDemo(ctx, { password });
+  if (!ctx.users.exists('admin')) {
+    ctx.users.create({ username: 'admin', fullName: 'Quản trị demo', role: 'admin', passwordHash: await hashPassword(password) });
+  }
+  return { created: seeded.created };
+}
+
 // Dữ liệu demo: giảng viên gv.demo, lớp "Lớp demo JS", 5 học viên, đề sum-array (chép từ đề mẫu
 // data/assignments/sum-array) và 5 bài nộp v1 lấy từ bài mẫu, ghi vào ctx.webDir. Chạy lại không tạo trùng.
 // Chỉ dùng để thử/quay video.

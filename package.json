@@ -16,6 +16,7 @@
     "web:build": "pnpm --filter @harness/web build",
     "web": "pnpm web:build && tsx apps/server/src/main.ts",
     "web:mock": "pnpm web:build && tsx apps/server/src/mock/main.ts",
+    "web:demo": "pnpm web:build && tsx apps/server/src/demo/main.ts",
     "web:api": "tsx watch apps/server/src/main.ts --dev",
     "web:ui": "pnpm --filter @harness/web dev",
     "admin:create": "tsx apps/server/src/cli/createAdmin.ts",
