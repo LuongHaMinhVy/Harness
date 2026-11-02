@@ -7,7 +7,7 @@ import { runQuestion } from './agent.js';
 import { autoApprove } from './approval.js';
 import { createLogger, type StepLog } from './logger.js';
 import { buildSystemPrompt } from './prompt.js';
-import { describeApiError } from './session.js';
+import { describeApiError, isRateLimit } from './session.js';
 import { createTestCache } from './toolCache.js';
 import { createTools } from './tools.js';
 
@@ -53,6 +53,23 @@ export function extractScore(steps: StepLog[]): number | null {
   return saved.length ? Number((saved.at(-1)!.input as any).score) : null;
 }
 
+const sleepMs = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+// Free tier giới hạn số request mỗi phút; bị 429 thì chờ hết cửa sổ rồi thử lại đúng một lần.
+export async function retryOnRateLimit<T>(
+  fn: () => Promise<T>,
+  opts: { waitMs: number; sleep?: (ms: number) => Promise<void>; onWait?: () => void },
+): Promise<T> {
+  try {
+    return await fn();
+  } catch (e) {
+    if (!isRateLimit(e)) throw e;
+    opts.onWait?.();
+    await (opts.sleep ?? sleepMs)(opts.waitMs);
+    return fn();
+  }
+}
+
 function savedComments(steps: StepLog[]): string {
   return steps
     .flatMap((s) => s.toolCalls)
@@ -81,18 +98,22 @@ async function main() {
 
   const students = Object.keys(golden);
   for (const [i, student] of students.entries()) {
-    if (i > 0) await new Promise((r) => setTimeout(r, 4000)); // tránh rate limit của free tier
+    if (i > 0) await sleepMs(4000); // giãn nhịp giữa các học viên cho free tier
     process.stdout.write(`▶ Chấm ${student}… `);
     try {
       logger.startQuestion(i + 1, `Chấm bài của ${student}`);
-      const r = await runQuestion({
-        model: google(modelId),
-        system,
-        history: [{ role: 'user', content: `Chấm bài của ${student}` }],
-        tools,
-        maxSteps,
-        onStep: logger.step,
-      });
+      const r = await retryOnRateLimit(
+        () =>
+          runQuestion({
+            model: google(modelId),
+            system,
+            history: [{ role: 'user', content: `Chấm bài của ${student}` }],
+            tools,
+            maxSteps,
+            onStep: logger.step,
+          }),
+        { waitMs: 30_000, onWait: () => process.stdout.write(pc.yellow('rate limit, chờ 30s… ')) },
+      );
       const total = logger.endQuestion(r.steps, r.totalMs, r.hitLimit, maxSteps);
       const aiScore = extractScore(r.steps);
       outcomes.push({ student, aiScore, answer: `${r.text}\n${savedComments(r.steps)}`, costUsd: total.costUsd });

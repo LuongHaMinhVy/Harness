@@ -21,9 +21,14 @@ function rootError(e: unknown): { status?: number; message: string } {
   return { status, message: message || String(e) };
 }
 
+export function isRateLimit(e: unknown): boolean {
+  const { status, message } = rootError(e);
+  return status === 429 || /resource.?exhausted|quota/i.test(message);
+}
+
 export function describeApiError(e: unknown): string {
   const { status, message } = rootError(e);
-  if (status === 429 || /resource.?exhausted|quota/i.test(message)) {
+  if (isRateLimit(e)) {
     return 'Gemini đang giới hạn tốc độ (free tier) — đợi ~30s rồi hỏi lại.';
   }
   if (status === 401 || status === 403 || /api.?key/i.test(message) || (status === 400 && /key/i.test(message))) {

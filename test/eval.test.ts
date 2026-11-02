@@ -1,5 +1,6 @@
-import { expect, test } from 'vitest';
-import { extractScore, scoreEval, type Golden, type Outcome } from '../src/eval.js';
+import { APICallError } from 'ai';
+import { expect, test, vi } from 'vitest';
+import { extractScore, retryOnRateLimit, scoreEval, type Golden, type Outcome } from '../src/eval.js';
 import type { StepLog } from '../src/logger.js';
 
 const golden: Golden = {
@@ -42,4 +43,27 @@ test('extractScore lấy save_grade saved cuối, bỏ qua rejected', () => {
   ];
   expect(extractScore(steps)).toBe(8);
   expect(extractScore([])).toBeNull();
+});
+
+const rateLimit = () =>
+  new APICallError({ message: 'Resource exhausted', url: 'x', requestBodyValues: {}, statusCode: 429, isRetryable: true });
+
+test('retryOnRateLimit: 429 lần đầu → chờ rồi thử lại thành công', async () => {
+  const fn = vi.fn().mockRejectedValueOnce(rateLimit()).mockResolvedValueOnce('ok');
+  const sleep = vi.fn(async () => {});
+  expect(await retryOnRateLimit(fn, { waitMs: 30000, sleep })).toBe('ok');
+  expect(sleep).toHaveBeenCalledWith(30000);
+  expect(fn).toHaveBeenCalledTimes(2);
+});
+
+test('retryOnRateLimit: lỗi khác 429 → ném ngay, không chờ', async () => {
+  const sleep = vi.fn(async () => {});
+  await expect(retryOnRateLimit(() => Promise.reject(new Error('hỏng')), { waitMs: 30000, sleep })).rejects.toThrow('hỏng');
+  expect(sleep).not.toHaveBeenCalled();
+});
+
+test('retryOnRateLimit: 429 hai lần → ném lỗi sau một lần thử lại', async () => {
+  const fn = vi.fn().mockRejectedValue(rateLimit());
+  await expect(retryOnRateLimit(fn, { waitMs: 1, sleep: async () => {} })).rejects.toBeInstanceOf(APICallError);
+  expect(fn).toHaveBeenCalledTimes(2);
 });
