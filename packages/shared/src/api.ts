@@ -80,6 +80,16 @@ export const EntryFileSchema = z
   .regex(/^[A-Za-z0-9_-][A-Za-z0-9._-]*(\/[A-Za-z0-9_-][A-Za-z0-9._-]*)*\.(js|cjs|mjs)$/, 'File chính phải là đường dẫn tương đối tới file .js/.cjs/.mjs')
   .refine((p) => !p.split('/').includes('..'), 'File chính không được chứa ".."');
 
+// --- Bài nộp và điểm ---
+
+export type SubmittedFile = { path: string; size: number };
+export type Submission = { id: number; assignmentId: number; studentId: number; version: number; files: SubmittedFile[]; submittedAt: number };
+/** Điểm chính thức — chỉ có sau khi giảng viên duyệt; học viên chỉ thấy loại điểm này. */
+export type Grade = { submissionId: number; score: number; comments: string; edited: boolean; approvedAt: number; approvedBy: string };
+export type StudentAssignment = Assignment & { latest: Submission | null; grade: Grade | null };
+export type StudentAssignmentDetail = StudentAssignment & { submissions: Submission[] };
+export type FileContent = { path: string; content: string };
+
 export const AssignmentBody = z.object({
   title: z.string().trim().min(1, 'Tên đề không được để trống').max(120),
   description: z.string().trim().min(1, 'Mô tả không được để trống').max(20_000),

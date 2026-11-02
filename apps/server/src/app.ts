@@ -2,16 +2,19 @@ import { getConnInfo } from '@hono/node-server/conninfo';
 import { APP_PATHS, type AppPaths } from '@harness/core/config';
 import type { Context } from 'hono';
 import { Hono } from 'hono';
-import { loadUser, requireAuth, requireRole, type AppEnv } from './auth/middleware.js';
+import { loadUser, type AppEnv } from './auth/middleware.js';
 import { createLoginLimiter } from './auth/rateLimit.js';
 import { createSessionStore } from './auth/sessions.js';
 import type { Db } from './db/database.js';
 import { createAssignmentRepo } from './repos/assignments.js';
 import { createAuditRepo } from './repos/audit.js';
 import { createClassRepo } from './repos/classes.js';
+import { createGradeRepo } from './repos/grades.js';
+import { createSubmissionRepo } from './repos/submissions.js';
 import { createUserRepo } from './repos/users.js';
 import { adminRoutes } from './routes/admin.js';
 import { authRoutes } from './routes/auth.js';
+import { studentRoutes } from './routes/student.js';
 import { teacherRoutes } from './routes/teacher.js';
 import { securityMiddleware } from './security.js';
 
@@ -25,6 +28,8 @@ export function createAppContext(db: Db, opts: { now?: () => number; paths?: App
     users: createUserRepo(db, now),
     classes: createClassRepo(db, now),
     assignments: createAssignmentRepo(db, now),
+    submissions: createSubmissionRepo(db, now),
+    grades: createGradeRepo(db, now),
     sessions: createSessionStore(db, { now }),
     audit: createAuditRepo(db, now),
     loginLimiter: createLoginLimiter(db, { now }),
@@ -50,10 +55,7 @@ export function createServerApp(ctx: AppContext, opts: ServerOptions) {
 
   app.route('/api/auth', authRoutes(ctx, { secureCookie: opts.secureCookie ?? false }));
 
-  const student = new Hono<AppEnv>();
-  student.use('*', requireAuth(), requireRole('student'));
-  student.get('/assignments', (c) => c.json([]));
-  app.route('/api/student', student);
+  app.route('/api/student', studentRoutes(ctx));
 
   app.route('/api/teacher', teacherRoutes(ctx));
   app.route('/api/admin', adminRoutes(ctx));
