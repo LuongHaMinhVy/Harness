@@ -1,0 +1,48 @@
+import type { MiddlewareHandler } from 'hono';
+import { bodyLimit } from 'hono/body-limit';
+import { secureHeaders } from 'hono/secure-headers';
+
+const VITE_DEV_PORT = 5173;
+const MAX_BODY_BYTES = 16 * 1024;
+
+const json = (error: string, status: 403 | 413 | 415) =>
+  new Response(JSON.stringify({ error }), { status, headers: { 'Content-Type': 'application/json' } });
+
+// Các lớp bảo vệ cho server chỉ chạy trên máy:
+// - Host phải là localhost/127.0.0.1 đúng cổng (chống DNS rebinding).
+// - POST phải có Origin của chính trang và Content-Type JSON (chống CSRF từ website khác).
+// - Giới hạn kích thước body, header bảo mật + CSP chặn script lạ.
+export function securityMiddleware(opts: { port: number; dev?: boolean }): MiddlewareHandler[] {
+  const ports = opts.dev ? [opts.port, VITE_DEV_PORT] : [opts.port];
+  const hosts = new Set(ports.flatMap((p) => [`127.0.0.1:${p}`, `localhost:${p}`]));
+  const origins = new Set([...hosts].map((h) => `http://${h}`));
+
+  const checkRequest: MiddlewareHandler = async (c, next) => {
+    if (!hosts.has(new URL(c.req.url).host)) return json('Host không hợp lệ', 403);
+    if (c.req.method !== 'GET' && c.req.method !== 'HEAD') {
+      if (!origins.has(c.req.header('origin') ?? '')) return json('Origin không hợp lệ', 403);
+      if (!(c.req.header('content-type') ?? '').startsWith('application/json')) {
+        return json('Chỉ nhận application/json', 415);
+      }
+    }
+    await next();
+  };
+
+  return [
+    secureHeaders({
+      contentSecurityPolicy: {
+        defaultSrc: ["'self'"],
+        connectSrc: ["'self'"],
+        imgSrc: ["'self'", 'data:'],
+        styleSrc: ["'self'"],
+        scriptSrc: ["'self'"],
+        objectSrc: ["'none'"],
+        frameAncestors: ["'none'"],
+        baseUri: ["'self'"],
+        formAction: ["'self'"],
+      },
+    }),
+    checkRequest,
+    bodyLimit({ maxSize: MAX_BODY_BYTES, onError: () => json('Nội dung gửi lên quá lớn', 413) }),
+  ];
+}
