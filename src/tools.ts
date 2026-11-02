@@ -48,8 +48,15 @@ function readGrades(file: string): GradeRecord[] {
   }
 }
 
+// Tên file bài nộp viết thường, không dấu: "Hùng" → "hung", "Đức.js" → "duc".
 export function normalizeStudent(name: string): string {
-  return name.trim().toLowerCase().replace(/\.js$/, '');
+  return name
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .replace(/đ/g, 'd')
+    .replace(/\.js$/, '');
 }
 
 const SAFE_NAME = /^[a-z0-9_-]+$/;

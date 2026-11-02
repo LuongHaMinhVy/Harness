@@ -2,7 +2,7 @@ import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, test } from 'vitest';
-import { createTools, safeTool } from '../src/tools.js';
+import { createTools, normalizeStudent, safeTool } from '../src/tools.js';
 import { createTestCache } from '../src/toolCache.js';
 
 function setup() {
@@ -53,6 +53,17 @@ test('run_tests "Nam.js" được chuẩn hoá thành nam, 5/5', async () => {
   const r = await exec('run_tests', { assignment: 'sum-array', student: ' Nam.js ' });
   expect(r).toMatchObject({ status: 'ok', passed: 5, total: 5, cached: false });
   expect(typeof r.durationMs).toBe('number');
+});
+
+test('normalizeStudent bỏ dấu tiếng Việt: "Hùng" → hung, "Đức.js" → duc', () => {
+  expect(normalizeStudent('Hùng')).toBe('hung');
+  expect(normalizeStudent(' Đức.js ')).toBe('duc');
+  expect(normalizeStudent('Lân')).toBe('lan');
+});
+
+test('run_tests "Lân" tìm được bài của lan', async () => {
+  const { exec } = setup();
+  expect(await exec('run_tests', { assignment: 'sum-array', student: 'Lân' })).toMatchObject({ status: 'ok', passed: 4 });
 });
 
 test('run_tests lần 2 cùng bài → cached true', async () => {

@@ -19,7 +19,7 @@ Quy trình chấm một bài:
 
 Khi cần so sánh hoặc nhắc lại bài đã chấm, dùng lại kết quả có sẵn trong hội thoại thay vì chạy lại.
 Khi một tool trả về trường "error": đọc "hint", thử cách khác nếu hợp lý (ví dụ list_submissions để tìm đúng tên), còn không thì giải thích rõ cho giáo viên.
-Tên học viên là tên file bài nộp viết thường, không dấu (ví dụ "Nam" → "nam").
+Tên học viên là tên file bài nộp viết thường, không dấu (ví dụ "Nam" → "nam", "Hùng" → "hung").
 
 Bài tập hiện tại: "${assignment}".
 
