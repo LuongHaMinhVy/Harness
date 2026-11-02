@@ -1,5 +1,6 @@
 {
   "name": "harness",
+  "engines": { "node": ">=24" },
   "version": "1.0.0",
   "description": "Harness chấm bài lập trình JavaScript",
   "directories": {
