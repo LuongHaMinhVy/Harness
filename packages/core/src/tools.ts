@@ -35,7 +35,27 @@ export function safeTool<A, R>(fn: (args: A) => Promise<R>): (args: A) => Promis
   };
 }
 
-export type ToolDeps = { dataDir: string; cache: TestCache; approve: Approver; gradesFile: string; timeoutMs?: number };
+/** Một bài nộp đã định vị: thư mục chứa bài, file chính, danh sách file (đường dẫn tương đối trong thư mục). */
+export type LocatedSubmission = { student: string; dir: string; entry: string; files: string[] };
+
+/** Tìm bài nộp theo (đề, học viên). CLI dùng dữ liệu mẫu một file; web dùng phiên bản mới nhất trong database. */
+export interface SubmissionLocator {
+  students(assignment: string): string[];
+  locate(assignment: string, student: string): LocatedSubmission;
+}
+
+export type ToolDeps = {
+  dataDir: string;
+  cache: TestCache;
+  approve: Approver;
+  gradesFile: string;
+  timeoutMs?: number;
+  locator?: SubmissionLocator;
+  /** Tiền tố đường dẫn (trong dataDir) mà read_file được phép đọc; mặc định đọc được cả dataDir. */
+  readScope?: string[];
+  /** Thay cách lưu điểm mặc định (duyệt + ghi file) — web dùng để lưu điểm đề xuất chờ giảng viên duyệt. */
+  saveGrade?: (req: GradeRequest) => Promise<{ status: string }>;
+};
 
 type GradeRecord = GradeRequest & { savedAt: string };
 
@@ -61,51 +81,83 @@ export function normalizeStudent(name: string): string {
 
 const SAFE_NAME = /^[a-z0-9_-]+$/;
 
+// Kiểm tra mã đề: chữ thường không dấu, có thư mục đề trong data/assignments.
+export function checkAssignment(dataDir: string, assignment: string): string {
+  const name = assignment.trim().toLowerCase();
+  if (!SAFE_NAME.test(name) || !existsSync(join(resolve(dataDir), 'assignments', name))) {
+    throw new ToolError('assignment_not_found', `Không có bài tập "${assignment}".`);
+  }
+  return name;
+}
+
+// Dữ liệu mẫu (CLI, eval): data/submissions/<đề>/<học viên>.js — mỗi bài một file.
+export function flatLocator(dataDir: string): SubmissionLocator {
+  const root = resolve(dataDir);
+  const dirOf = (assignment: string) => {
+    const name = checkAssignment(dataDir, assignment);
+    const dir = join(root, 'submissions', name);
+    if (!existsSync(dir)) throw new ToolError('assignment_not_found', `Không có bài tập "${assignment}".`);
+    return dir;
+  };
+  return {
+    students: (assignment) =>
+      readdirSync(dirOf(assignment))
+        .filter((f) => f.endsWith('.js'))
+        .map((f) => f.slice(0, -3))
+        .sort(),
+    locate(assignment, student) {
+      const dir = dirOf(assignment);
+      const name = normalizeStudent(student);
+      const entry = `${name}.js`;
+      if (!SAFE_NAME.test(name) || !existsSync(join(dir, entry))) {
+        throw new ToolError('student_not_found', `Không có bài nộp của "${student}" cho bài ${assignment}.`, LIST_HINT);
+      }
+      return { student: name, dir, entry, files: [entry] };
+    },
+  };
+}
+
 export function createTools(deps: ToolDeps) {
   const root = resolve(deps.dataDir);
-
-  function submissionsDir(assignment: string): string {
-    const name = assignment.trim().toLowerCase();
-    const dir = join(root, 'submissions', name);
-    if (!SAFE_NAME.test(name) || !existsSync(join(root, 'assignments', name)) || !existsSync(dir)) {
-      throw new ToolError('assignment_not_found', `Không có bài tập "${assignment}".`);
-    }
-    return dir;
-  }
-
-  function submissionFile(assignment: string, student: string): string {
-    const dir = submissionsDir(assignment);
-    const name = normalizeStudent(student);
-    const file = join(dir, `${name}.js`);
-    if (!SAFE_NAME.test(name) || !existsSync(file)) {
-      throw new ToolError('student_not_found', `Không có bài nộp của "${student}" cho bài ${assignment}.`, LIST_HINT);
-    }
-    return file;
-  }
+  const locator = deps.locator ?? flatLocator(deps.dataDir);
+  const relOf = (abs: string) => relative(root, abs).replaceAll('\\', '/');
 
   return {
     list_submissions: tool({
       description: 'Liệt kê tên các học viên đã nộp bài cho một bài tập.',
       inputSchema: z.object({ assignment: z.string().describe('Mã bài tập, ví dụ "sum-array"') }),
       execute: safeTool(async ({ assignment }: { assignment: string }) => {
-        const students = readdirSync(submissionsDir(assignment))
-          .filter((f) => f.endsWith('.js'))
-          .map((f) => f.slice(0, -3))
-          .sort();
-        return { students };
+        checkAssignment(deps.dataDir, assignment);
+        return { students: locator.students(assignment) };
+      }),
+    }),
+
+    list_files: tool({
+      description:
+        'Liệt kê các file trong bài nộp của một học viên. Kết quả có "base" (thư mục bài nộp) và "entry" (file chính); ' +
+        'đọc từng file bằng read_file("<base>/<file>").',
+      inputSchema: z.object({ assignment: z.string(), student: z.string() }),
+      execute: safeTool(async ({ assignment, student }: { assignment: string; student: string }) => {
+        checkAssignment(deps.dataDir, assignment);
+        const s = locator.locate(assignment, student);
+        return { student: s.student, entry: s.entry, base: relOf(s.dir), files: s.files };
       }),
     }),
 
     read_file: tool({
       description:
         'Đọc một file trong thư mục dữ liệu: đề "assignments/<bài>/README.md", rubric "assignments/<bài>/rubric.md", ' +
-        'hoặc bài nộp "submissions/<bài>/<học viên>.js". Quy trình chấm: đọc rubric → đọc bài → run_tests → save_grade.',
+        'hoặc file bài nộp "<base>/<file>" lấy từ list_files. Quy trình chấm: list_files → đọc bài → run_tests → save_grade.',
       inputSchema: z.object({ path: z.string().describe('Đường dẫn tương đối trong thư mục data') }),
       execute: safeTool(async ({ path }: { path: string }) => {
         const target = resolve(root, path);
         const rel = relative(root, target);
         if (rel.startsWith('..') || isAbsolute(rel)) {
           throw new ToolError('outside_data_dir', `Không được đọc file ngoài thư mục dữ liệu: ${path}`);
+        }
+        const relPosix = rel.replaceAll('\\', '/');
+        if (deps.readScope && !deps.readScope.some((prefix) => relPosix.startsWith(prefix) || `${relPosix}/` === prefix)) {
+          throw new ToolError('outside_scope', `Lần chấm này chỉ được đọc đề và bài nộp đang chấm: ${path}`);
         }
         if (!existsSync(target) || !statSync(target).isFile()) {
           throw new ToolError('not_found', `Không tìm thấy file: ${path}`, LIST_HINT);
@@ -124,14 +176,18 @@ export function createTools(deps: ToolDeps) {
         'status "timeout" nghĩa là bài chạy quá lâu (thường do vòng lặp vô hạn), "load_error" là bài không nạp được (lỗi cú pháp).',
       inputSchema: z.object({ assignment: z.string(), student: z.string() }),
       execute: safeTool(async ({ assignment, student }: { assignment: string; student: string }) => {
-        const file = submissionFile(assignment, student);
-        const testsFile = join(root, 'assignments', assignment.trim().toLowerCase(), 'tests.js');
-        const key = deps.cache.key(readFileSync(file, 'utf8'), readFileSync(testsFile, 'utf8'));
+        const name = checkAssignment(deps.dataDir, assignment);
+        const s = locator.locate(assignment, student);
+        const entry = join(s.dir, s.entry);
+        const testsFile = join(root, 'assignments', name, 'tests.js');
+        // Key gồm mọi file của bài nộp (theo thứ tự) + bộ test: sửa bất kỳ file nào là chạy lại.
+        const source = s.files.map((f) => `${f}\0${readFileSync(join(s.dir, f), 'utf8')}`).join('\0');
+        const key = deps.cache.key(source, readFileSync(testsFile, 'utf8'));
         const hit = deps.cache.get(key);
         if (hit) return { ...hit, cached: true, durationMs: 0, cacheKey: key.slice(0, 4) };
 
         const started = Date.now();
-        const result = await runSubmission(file, testsFile, deps.timeoutMs);
+        const result = await runSubmission(entry, testsFile, deps.timeoutMs, { readRoots: [s.dir] });
         deps.cache.set(key, result);
         return { ...result, cached: false, durationMs: Date.now() - started };
       }),
@@ -148,9 +204,9 @@ export function createTools(deps: ToolDeps) {
         comments: z.string().min(1),
       }),
       execute: safeTool(async (req: GradeRequest) => {
-        submissionFile(req.assignment, req.student);
-        const student = normalizeStudent(req.student);
-        const assignment = req.assignment.trim().toLowerCase();
+        const assignment = checkAssignment(deps.dataDir, req.assignment);
+        const student = locator.locate(req.assignment, req.student).student;
+        if (deps.saveGrade) return deps.saveGrade({ ...req, student, assignment });
         if (!(await deps.approve({ ...req, student, assignment }))) return { status: 'rejected_by_user' as const };
 
         const grades = readGrades(deps.gradesFile).filter((g) => !(g.assignment === assignment && g.student === student));
