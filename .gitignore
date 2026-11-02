@@ -6,3 +6,5 @@ data/grades-eval.json
 .superpowers/
 web/dist/
 data/grades.json
+data/grades-mock.json
+data/grades-eval-mock.json

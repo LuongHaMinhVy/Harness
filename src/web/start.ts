@@ -1,24 +1,22 @@
 import { existsSync } from 'node:fs';
 import { serve } from '@hono/node-server';
 import type { LanguageModel } from 'ai';
+import type { AppPaths } from '../config.js';
 import { createApp } from './server.js';
 import { createWebSession } from './webSession.js';
 
 const STATIC_ROOT = 'web/dist';
 
 // Khởi động server web, dùng chung cho chạy thật (main.ts) và chạy với model giả (scripts/web-mock.ts).
-export function startWebServer(o: { model: LanguageModel; modelName: string; maxSteps: number; port: number; dev: boolean }) {
-  const session = createWebSession({
-    model: o.model,
-    modelName: o.modelName,
-    dataDir: 'data',
-    gradesFile: 'data/grades.json',
-    evalGradesFile: 'data/grades-eval.json',
-    cacheFile: '.cache/tests.json',
-    logDir: 'logs',
-    goldenFile: 'eval/golden.json',
-    maxSteps: o.maxSteps,
-  });
+export function startWebServer(o: {
+  model: LanguageModel;
+  modelName: string;
+  paths: AppPaths;
+  maxSteps: number;
+  port: number;
+  dev: boolean;
+}) {
+  const session = createWebSession({ model: o.model, modelName: o.modelName, ...o.paths, maxSteps: o.maxSteps });
   const hasUi = existsSync(STATIC_ROOT);
   const app = createApp({ session, port: o.port, dev: o.dev, staticRoot: hasUi ? STATIC_ROOT : undefined });
 

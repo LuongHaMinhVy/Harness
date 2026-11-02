@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import { google } from '@ai-sdk/google';
+import { APP_PATHS } from '../config.js';
 import { parseMaxSteps, parsePort, startWebServer } from './start.js';
 
 if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
@@ -15,6 +16,7 @@ const modelName = process.env.MODEL ?? 'gemini-2.5-flash';
 startWebServer({
   model: google(modelName),
   modelName,
+  paths: APP_PATHS,
   maxSteps: parseMaxSteps(process.env.MAX_STEPS),
   port: parsePort(process.env.PORT),
   dev: process.argv.includes('--dev'),
