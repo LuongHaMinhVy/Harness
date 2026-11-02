@@ -1,44 +1,28 @@
 {
   "name": "harness",
-  "engines": { "node": ">=24" },
   "version": "1.0.0",
+  "private": true,
+  "type": "module",
   "description": "Harness chấm bài lập trình JavaScript",
-  "directories": {
-    "doc": "docs"
+  "engines": {
+    "node": ">=24"
   },
   "scripts": {
-    "start": "tsx src/cli.ts",
-    "eval": "tsx src/eval.ts",
+    "start": "tsx apps/cli/src/cli.ts",
+    "eval": "tsx apps/cli/src/eval.ts",
+    "spike": "tsx apps/cli/src/spike.ts",
     "test": "vitest run",
-    "spike": "tsx scripts/spike.ts",
-    "typecheck": "tsc -p . && tsc -p web",
-    "web": "vite build --config web/vite.config.ts && tsx src/web/main.ts",
-    "web:mock": "vite build --config web/vite.config.ts && tsx scripts/web-mock.ts",
-    "web:api": "tsx watch src/web/main.ts --dev",
-    "web:ui": "vite --config web/vite.config.ts"
-  },
-  "keywords": [],
-  "type": "module",
-  "dependencies": {
-    "@ai-sdk/google": "^4.0.109",
-    "@hono/node-server": "^2.1.5",
-    "@tanstack/react-query": "^5.105.0",
-    "ai": "^7.0.159",
-    "dotenv": "^18.0.9",
-    "hono": "^4.13.16",
-    "picocolors": "^1.1.1",
-    "react": "^19.3.1",
-    "react-dom": "^19.3.1",
-    "zod": "^4.6.7"
+    "typecheck": "tsc -p packages/shared && tsc -p packages/core && tsc -p apps/cli && tsc -p apps/server && tsc -p apps/web",
+    "web:build": "pnpm --filter @harness/web build",
+    "web": "pnpm web:build && tsx apps/server/src/main.ts",
+    "web:mock": "pnpm web:build && tsx apps/server/src/mock/main.ts",
+    "web:api": "tsx watch apps/server/src/main.ts --dev",
+    "web:ui": "pnpm --filter @harness/web dev"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",
-    "@types/react": "^19.3.0",
-    "@types/react-dom": "^19.3.0",
-    "@vitejs/plugin-react": "^6.1.2",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
-    "vite": "^8.3.5",
     "vitest": "^5.0.5"
   }
 }

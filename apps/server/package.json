@@ -1,0 +1,16 @@
+{
+  "name": "@harness/server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@harness/core": "workspace:*",
+    "@harness/shared": "workspace:*",
+    "ai": "^7.0.159",
+    "@ai-sdk/google": "^4.0.109",
+    "hono": "^4.13.16",
+    "@hono/node-server": "^2.1.5",
+    "dotenv": "^18.0.9",
+    "zod": "^4.6.7"
+  }
+}

@@ -7,16 +7,58 @@ settings:
 importers:
 
   .:
+    devDependencies:
+      '@types/node':
+        specifier: ^26.6.6
+        version: 26.6.6
+      tsx:
+        specifier: ^4.23.15
+        version: 4.23.15
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      vitest:
+        specifier: ^5.0.5
+        version: 5.0.5(@types/node@26.6.6)(vite@8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15))
+
+  apps/cli:
     dependencies:
       '@ai-sdk/google':
         specifier: ^4.0.109
         version: 4.0.109(zod@4.6.7)
+      '@harness/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@harness/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
+      ai:
+        specifier: ^7.0.159
+        version: 7.0.159(zod@4.6.7)
+      dotenv:
+        specifier: ^18.0.9
+        version: 18.0.9
+      picocolors:
+        specifier: ^1.1.1
+        version: 1.1.1
+      zod:
+        specifier: ^4.6.7
+        version: 4.6.7
+
+  apps/server:
+    dependencies:
+      '@ai-sdk/google':
+        specifier: ^4.0.109
+        version: 4.0.109(zod@4.6.7)
+      '@harness/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@harness/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       '@hono/node-server':
         specifier: ^2.1.5
         version: 2.1.5(hono@4.13.16)
-      '@tanstack/react-query':
-        specifier: ^5.105.0
-        version: 5.105.0(@types/react@19.3.0)(react@19.3.1)
       ai:
         specifier: ^7.0.159
         version: 7.0.159(zod@4.6.7)
@@ -26,22 +68,25 @@ importers:
       hono:
         specifier: ^4.13.16
         version: 4.13.16
-      picocolors:
-        specifier: ^1.1.1
-        version: 1.1.1
+      zod:
+        specifier: ^4.6.7
+        version: 4.6.7
+
+  apps/web:
+    dependencies:
+      '@harness/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
+      '@tanstack/react-query':
+        specifier: ^5.105.0
+        version: 5.105.0(@types/react@19.3.0)(react@19.3.1)
       react:
         specifier: ^19.3.1
         version: 19.3.1
       react-dom:
         specifier: ^19.3.1
         version: 19.3.1(react@19.3.1)
-      zod:
-        specifier: ^4.6.7
-        version: 4.6.7
     devDependencies:
-      '@types/node':
-        specifier: ^26.6.6
-        version: 26.6.6
       '@types/react':
         specifier: ^19.3.0
         version: 19.3.0
@@ -51,18 +96,30 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^6.1.2
         version: 6.1.2(vite@8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15))
-      tsx:
-        specifier: ^4.23.15
-        version: 4.23.15
-      typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
       vite:
         specifier: ^8.3.5
         version: 8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)
-      vitest:
-        specifier: ^5.0.5
-        version: 5.0.5(@types/node@26.6.6)(vite@8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15))
+
+  packages/core:
+    dependencies:
+      '@harness/shared':
+        specifier: workspace:*
+        version: link:../shared
+      ai:
+        specifier: ^7.0.159
+        version: 7.0.159(zod@4.6.7)
+      picocolors:
+        specifier: ^1.1.1
+        version: 1.1.1
+      zod:
+        specifier: ^4.6.7
+        version: 4.6.7
+
+  packages/shared:
+    dependencies:
+      zod:
+        specifier: ^4.6.7
+        version: 4.6.7
 
 packages:
 

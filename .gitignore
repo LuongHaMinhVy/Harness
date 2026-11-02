@@ -4,7 +4,7 @@ logs/
 .cache/
 data/grades-eval.json
 .superpowers/
-web/dist/
+apps/web/dist/
 data/grades.json
 data/grades-mock.json
 data/grades-eval-mock.json

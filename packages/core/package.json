@@ -1,0 +1,16 @@
+{
+  "name": "@harness/core",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./*": "./src/*.ts",
+    "./testing/*": "./src/testing/*.ts"
+  },
+  "dependencies": {
+    "@harness/shared": "workspace:*",
+    "ai": "^7.0.159",
+    "zod": "^4.6.7",
+    "picocolors": "^1.1.1"
+  }
+}
