@@ -66,6 +66,11 @@ test('nhiều file thường → giữ nguyên đường dẫn; file .zip → t�
   await expect(collectFiles([new File([zip({ 'index.js': 'a' })], 'bai-lam.zip')])).rejects.toThrow(/GitHub/);
 });
 
+test('file rác của hệ điều hành (.DS_Store, Thumbs.db) bị bỏ qua thay vì báo file ẩn', async () => {
+  const files = await collectFiles([new File(['a'], 'bai/index.js'), new File(['r'], 'bai/.DS_Store'), new File(['r'], 'bai/Thumbs.db')]);
+  expect(files.map((f) => f.path)).toEqual(['bai/index.js']);
+});
+
 test('stripCommonRoot bỏ thư mục gốc chung khi mọi file nằm trong cùng một thư mục', () => {
   const f = (path: string) => ({ path, data: new Uint8Array() });
   expect(stripCommonRoot([f('repo-abc/index.js'), f('repo-abc/lib/a.js')]).map((x) => x.path)).toEqual(['index.js', 'lib/a.js']);

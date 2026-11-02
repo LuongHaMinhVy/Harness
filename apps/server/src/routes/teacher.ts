@@ -100,8 +100,8 @@ export function teacherRoutes(ctx: AppContext) {
     if (body instanceof Response) return body;
     if (!ctx.classes.getFor(body.classId, user)) return c.json(NOT_FOUND, 404);
     const { tests, ...input } = body;
-    const slug = uniqueSlug(body.title, ctx.assignments.slugTaken, ctx.paths.dataDir);
-    writeAssignmentFiles(ctx.paths.dataDir, slug, body);
+    const slug = uniqueSlug(body.title, ctx.assignments.slugTaken, ctx.webDir);
+    writeAssignmentFiles(ctx.webDir, slug, body);
     const a = ctx.assignments.create(slug, input, user.id);
     ctx.audit.log(user.id, 'assignment_created', a.slug, { assignmentId: a.id, tests: tests.length });
     return c.json(a, 201);
@@ -111,7 +111,7 @@ export function teacherRoutes(ctx: AppContext) {
     const id = idParam(c);
     const a = id && ctx.assignments.getForTeacher(id, c.get('user')!);
     if (!a) return c.json(NOT_FOUND, 404);
-    const detail: AssignmentDetail = { ...a, tests: readAssignmentTests(ctx.paths.dataDir, a.slug) };
+    const detail: AssignmentDetail = { ...a, tests: readAssignmentTests(ctx.webDir, a.slug) };
     return c.json(detail);
   });
 
@@ -124,7 +124,7 @@ export function teacherRoutes(ctx: AppContext) {
     if (body instanceof Response) return body;
     if (!ctx.classes.getFor(body.classId, user)) return c.json(NOT_FOUND, 404);
     const { tests: _tests, ...input } = body;
-    writeAssignmentFiles(ctx.paths.dataDir, existing.slug, body);
+    writeAssignmentFiles(ctx.webDir, existing.slug, body);
     const a = ctx.assignments.update(existing.id, input);
     ctx.audit.log(user.id, 'assignment_updated', a.slug, { assignmentId: a.id });
     return c.json(a);

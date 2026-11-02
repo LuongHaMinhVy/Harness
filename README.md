@@ -79,7 +79,7 @@ pnpm web:lan        # lắng nghe mọi địa chỉ, tự nhận IPv4 của má
 - **Upload**: ≤ 50 file, mỗi file ≤ 512 KB, chỉ `.js .cjs .mjs .json .md .txt`, chặn `..`/đường dẫn tuyệt đối/file ẩn; không nhận file nén. **GitHub**: chỉ gọi `api.github.com`/`codeload.github.com`, không theo redirect, repo ≤ 20 MB, giải nén có đếm byte thật.
 - **Runner cô lập** (Node Permission Model): bài nộp chỉ đọc được thư mục của chính nó; không ghi file, không chạy lệnh, không thấy biến môi trường (API key), giới hạn 64 MB RAM, 3 giây, 1 MB output. **Node 24 chưa chặn được mạng** — chấm bài của người lạ thì nên chạy server trong container không có mạng.
 - **Chống prompt injection**: system prompt coi code nộp là dữ liệu; điểm chức năng theo kết quả test; cờ cảnh báo; giảng viên luôn duyệt.
-- **Dữ liệu gửi ra ngoài**: khi chấm, nội dung bài nộp được gửi tới API Gemini của Google (free tier có thể dùng dữ liệu để cải thiện sản phẩm). Database, bài nộp và đề tạo trên web (`data/app*.db`, `data/submissions/*/*/`, `data/assignments/*`) không đưa lên git.
+- **Dữ liệu gửi ra ngoài**: khi chấm, nội dung bài nộp được gửi tới API Gemini của Google (free tier có thể dùng dữ liệu để cải thiện sản phẩm). Database, đề và bài nộp tạo trên web (`data/app*.db`, `data/web/`, `data/web-mock/`) không đưa lên git; muốn làm lại từ đầu thì xoá cả database lẫn thư mục `data/web*` đi kèm.
 
 ## CLI
 

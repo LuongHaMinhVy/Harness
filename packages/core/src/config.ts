@@ -9,6 +9,8 @@ export type AppPaths = {
   goldenFile: string;
   /** Database SQLite của web lớp học. */
   dbFile?: string;
+  /** Thư mục đề và bài nộp tạo trên web, đi cùng database (thiếu thì dùng dataDir). Tách khỏi dữ liệu mẫu của CLI. */
+  webDir?: string;
 };
 
 export const APP_PATHS: AppPaths = {
@@ -19,6 +21,7 @@ export const APP_PATHS: AppPaths = {
   logDir: 'logs',
   goldenFile: 'eval/golden.json',
   dbFile: 'data/app.db',
+  webDir: 'data/web',
 };
 
 // `pnpm web:mock` dùng file điểm riêng để điểm do model giả chấm không ghi đè điểm giáo viên đã duyệt.
@@ -27,4 +30,5 @@ export const MOCK_PATHS: AppPaths = {
   gradesFile: 'data/grades-mock.json',
   evalGradesFile: 'data/grades-eval-mock.json',
   dbFile: 'data/app-mock.db',
+  webDir: 'data/web-mock',
 };

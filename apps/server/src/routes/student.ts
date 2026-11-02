@@ -44,7 +44,7 @@ export function studentRoutes(ctx: AppContext) {
 
   const save = (user: User, a: Assignment, files: UploadedFile[], origin?: { source: 'github'; url: string; commit: string }) => {
     const version = ctx.submissions.nextVersion(a.id, user.id);
-    const saved = saveSubmissionFiles(submissionDir(ctx.paths.dataDir, a.slug, user.username, version), files);
+    const saved = saveSubmissionFiles(submissionDir(ctx.webDir, a.slug, user.username, version), files);
     const sub = ctx.submissions.create(a.id, user.id, version, saved, origin);
     ctx.audit.log(user.id, 'submitted', a.slug, { submissionId: sub.id, version, files: saved.length, source: sub.source, commit: sub.commit });
     return sub;
@@ -100,7 +100,7 @@ export function studentRoutes(ctx: AppContext) {
     const a = sub && ctx.assignments.get(sub.assignmentId);
     if (!sub || !a) return c.json(NOT_FOUND, 404);
     const path = c.req.query('path') ?? '';
-    const content = readSubmissionFile(submissionDir(ctx.paths.dataDir, a.slug, user.username, sub.version), path);
+    const content = readSubmissionFile(submissionDir(ctx.webDir, a.slug, user.username, sub.version), path);
     if (content === null) return c.json(NOT_FOUND, 404);
     const file: FileContent = { path, content };
     return c.json(file);

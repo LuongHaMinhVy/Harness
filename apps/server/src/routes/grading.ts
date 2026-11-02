@@ -74,7 +74,7 @@ export function gradingRoutes(ctx: AppContext) {
     if (!found) return c.json(NOT_FOUND, 404);
     const { sub, a, student } = found;
     const path = c.req.query('path') ?? '';
-    const content = readSubmissionFile(submissionDir(ctx.paths.dataDir, a.slug, student.username, sub.version), path);
+    const content = readSubmissionFile(submissionDir(ctx.webDir, a.slug, student.username, sub.version), path);
     if (content === null) return c.json(NOT_FOUND, 404);
     const file: FileContent = { path, content };
     return c.json(file);

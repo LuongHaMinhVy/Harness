@@ -128,8 +128,8 @@ export async function collectFiles(input: File[]): Promise<UploadedFile[]> {
   if (input.length > LIMITS.files) throw new UploadError(`Nộp quá nhiều file (tối đa ${LIMITS.files})`);
   const files: UploadedFile[] = [];
   for (const f of input) {
+    if (isJunk(f.name.replace(/\\/g, '/'))) continue;
     const path = checkPath(f.name);
-    if (isJunk(path)) continue;
     if (f.size > LIMITS.fileBytes) throw new UploadError(`File "${path}" quá lớn (tối đa ${LIMITS.fileBytes / 1024} KB)`);
     files.push({ path, data: new Uint8Array(await f.arrayBuffer()) });
   }

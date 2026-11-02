@@ -1,5 +1,6 @@
 // Chạy web lớp học với model giả (không cần API key, không gọi Gemini) và database riêng (data/app-mock.db)
 // có sẵn dữ liệu demo — để thử giao diện. Không dùng cho lớp học thật.
+import { existsSync, rmSync } from 'node:fs';
 import { MOCK_PATHS } from '@harness/core/config';
 import { hashPassword } from '../auth/password.js';
 import { seedDemo } from '../cli/seed.js';
@@ -8,6 +9,9 @@ import { parsePort, startWebServer } from '../start.js';
 import { createMockModel } from './mockModel.js';
 
 const DEMO_PASSWORD = process.env.DEMO_PASSWORD ?? 'demo-12345';
+
+// Xoá data/app-mock.db để làm lại từ đầu → bỏ luôn đề/bài nộp cũ của nó, nếu không seed sẽ trùng thư mục.
+if (!existsSync(MOCK_PATHS.dbFile!)) rmSync(MOCK_PATHS.webDir!, { recursive: true, force: true });
 
 await startWebServer({
   model: createMockModel(),

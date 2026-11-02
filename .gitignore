@@ -10,7 +10,6 @@ data/grades-mock.json
 data/grades-eval-mock.json
 data/app*.db
 data/app*.db-*
-# Bài nộp và đề tạo trên web là dữ liệu của lớp — không đưa lên git (bài mẫu sum-array vẫn giữ)
-data/submissions/*/*/
-data/assignments/*
-!data/assignments/sum-array/
+# Đề và bài nộp tạo trên web là dữ liệu của lớp — không đưa lên git
+data/web/
+data/web-mock/

@@ -51,6 +51,7 @@ const missingModel = new Proxy({} as LanguageModel & object, {
 export function createAppContext(db: Db, opts: ContextOptions = {}) {
   const now = opts.now ?? Date.now;
   const paths = opts.paths ?? APP_PATHS;
+  const webDir = paths.webDir ?? paths.dataDir;
   const users = createUserRepo(db, now);
   const assignments = createAssignmentRepo(db, now);
   const submissions = createSubmissionRepo(db, now);
@@ -62,6 +63,8 @@ export function createAppContext(db: Db, opts: ContextOptions = {}) {
     db,
     now,
     paths,
+    /** Gốc chứa assignments/ và submissions/ của web lớp học. */
+    webDir,
     modelName: opts.modelName ?? 'chưa cấu hình',
     harness: opts.harness,
     github: opts.github ?? { token: process.env.GITHUB_TOKEN || undefined },
@@ -77,7 +80,7 @@ export function createAppContext(db: Db, opts: ContextOptions = {}) {
     ipLimiter: createLoginLimiter(db, { now, maxFailures: 30 }),
     gradingEvents,
     grading: createGradingService({
-      dataDir: paths.dataDir,
+      dataDir: webDir,
       model: opts.model ?? missingModel,
       maxSteps: opts.maxSteps ?? 8,
       cache: createTestCache(paths.cacheFile),
