@@ -53,10 +53,9 @@ test('bài nộp bị cô lập: không đọc file ngoài, không ghi file, kh�
   }
 }, 10000);
 
-test('bài nộp xả quá nhiều dữ liệu ra stdout → dừng, báo load_error', async () => {
-  const r = await runSubmission(`${F}/flood.js`, T, 5000);
-  expect(r.status).toBe('load_error');
-  expect(r.status === 'load_error' && r.message).toMatch(/quá nhiều/);
+test('bài nộp xả rất nhiều dữ liệu ra stdout → bị bỏ qua (không đi qua kênh kết quả), bài vẫn được chấm', async () => {
+  // flood.js in 2 MB rồi export sumArray luôn trả 0: chỉ đạt test "mảng rỗng".
+  expect(await runSubmission(`${F}/flood.js`, T, 5000)).toMatchObject({ status: 'ok', passed: 1, total: 5 });
 }, 10000);
 
 test('bài nhiều file: file chính require file khác trong cùng thư mục bài nộp', async () => {
@@ -118,3 +117,25 @@ test('bài nộp không mở được kết nối mạng (TCP, HTTP, fetch, UDP,
     server.close();
   }
 }, 10000);
+
+test('chụp heap (v8.getHeapSnapshot) để lấy nonce/bộ test rồi ghi kết quả giả → không đạt, heap không có bộ test', async () => {
+  const r = await runSubmission(`${A}/heap-snapshot/index.js`, T);
+  expect(allPassed(r)).toBe(false);
+  expect(r.status === 'ok' && r.results[0].error).toContain('tests:false');
+});
+
+test('đọc mã nguồn test qua Function.prototype.caller để chép đáp án → không đạt', async () => {
+  const r = await runSubmission(`${A}/caller/index.js`, T);
+  expect(r).toMatchObject({ status: 'ok', passed: 1, total: 5 });
+});
+
+test('bộ test do giảng viên viết chạy ở giám khảo: không chạy được lệnh, không tạo worker, không ghi file trên server', async () => {
+  const r = await runSubmission(S('nam'), `${A}/teacher-tests.js`);
+  expect(r.status).toBe('ok');
+  const errors = r.status === 'ok' ? r.results.map((x) => x.error ?? '') : [];
+  expect(errors).toHaveLength(4);
+  for (const e of errors) {
+    expect(e).toContain('ERR_ACCESS_DENIED');
+    expect(e).not.toContain('ALLOWED');
+  }
+});

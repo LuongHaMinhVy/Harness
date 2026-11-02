@@ -1,5 +1,5 @@
-import { spawn } from 'node:child_process';
-import { createHash, randomBytes } from 'node:crypto';
+import { spawn, type ChildProcess } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import type { Readable, Writable } from 'node:stream';
 import { dirname, resolve } from 'node:path';
@@ -14,88 +14,128 @@ export type RunResult =
 export type RunOptions = {
   /** Thư mục/file bài nộp được phép đọc; mặc định là thư mục chứa file chính. */
   readRoots?: string[];
-  maxOutputBytes?: number;
   memoryMb?: number;
+  /** Trần thời gian cả lần chạy (mọi lần gọi cộng lại). */
+  totalBudgetMs?: number;
 };
 
 const RUNNER = fileURLToPath(new URL('./test-runner.cts', import.meta.url));
-const MAX_OUTPUT_BYTES = 1024 * 1024;
+const STUDENT_CALL = fileURLToPath(new URL('./student-call.cts', import.meta.url));
+const MEMORY_MB = 64;
+const TOTAL_BUDGET_MS = 20_000;
+const MAX_REPLY_BYTES = 1024 * 1024;
 
 /** Dấu vân tay của runner: đưa vào khoá cache để sửa runner thì kết quả cũ trong cache hết hiệu lực. */
-export const RUNNER_ID = createHash('sha256').update(readFileSync(RUNNER)).digest('hex').slice(0, 12);
-const MEMORY_MB = 64;
+export const RUNNER_ID = createHash('sha256').update(readFileSync(RUNNER)).update(readFileSync(STUDENT_CALL)).digest('hex').slice(0, 12);
 
-// Chạy bộ test với bài nộp trong một tiến trình con bị cô lập bằng Permission Model của Node:
-// chỉ được ĐỌC thư mục bài nộp và runner (bộ test gửi qua stdin, bài nộp không đọc được); không ghi file,
-// không tạo tiến trình con/worker/inspector; env rỗng (không thấy API key); intrinsic bị đóng băng;
-// giới hạn bộ nhớ, thời gian và lượng dữ liệu in ra.
-// Kết quả chỉ nhận trên fd 3 kèm nonce ngẫu nhiên của lần chạy — bài nộp không biết nonce nên không giả được.
-// Node 24 chưa có quyền chặn mạng: runner chặn ở các API public, nhưng chấm bài người lạ vẫn nên chạy
+// Chạy bộ test với bài nộp, tách làm hai lớp tiến trình (Permission Model của Node, env rỗng, intrinsic đóng băng):
+// - giám khảo (test-runner.cts): giữ bộ test ẩn và tự chạy assert, KHÔNG nạp bài nộp, không được tạo tiến trình
+//   (bộ test do giảng viên viết chạy ở đó); cần gọi hàm của bài nộp thì gửi yêu cầu về đây;
+// - mỗi lần gọi: một tiến trình student-call.cts riêng do tiến trình này tạo, chỉ ĐỌC được thư mục bài nộp, không ghi
+//   file, không tạo tiến trình/worker/inspector, giới hạn bộ nhớ và `timeoutMs` cho lần gọi đó.
+// Code học viên không cùng tiến trình với bộ test hay kênh kết quả nên không giả được kết quả, không đọc được test ẩn.
+// Node 24 chưa có quyền chặn mạng: student-call chặn ở các API public, nhưng chấm bài người lạ vẫn nên chạy
 // trong container không có mạng.
 export function runSubmission(submissionPath: string, testsPath: string, timeoutMs = 3000, opts: RunOptions = {}): Promise<RunResult> {
   const entry = resolve(submissionPath);
   const readRoots = (opts.readRoots ?? [dirname(entry)]).map((p) => resolve(p));
-  const maxOutput = opts.maxOutputBytes ?? MAX_OUTPUT_BYTES;
-  const nonce = `${randomBytes(24).toString('hex')}:`;
-  let testsSource: string;
+  const deadline = Date.now() + (opts.totalBudgetMs ?? TOTAL_BUDGET_MS);
+  let tests: string;
   try {
-    testsSource = readFileSync(resolve(testsPath), 'utf8');
+    tests = readFileSync(resolve(testsPath), 'utf8');
   } catch (err) {
     return Promise.resolve({ status: 'load_error', message: `Không đọc được bộ test: ${err instanceof Error ? err.message : String(err)}` });
   }
-  const args = [
+  const judgeArgs = ['--permission', `--allow-fs-read=${RUNNER}`, '--frozen-intrinsics', RUNNER];
+  const callArgs = [
     '--permission',
-    ...[...readRoots, RUNNER].map((p) => `--allow-fs-read=${p}`),
+    ...[...readRoots, STUDENT_CALL].map((p) => `--allow-fs-read=${p}`),
     '--frozen-intrinsics',
     `--max-old-space-size=${opts.memoryMb ?? MEMORY_MB}`,
-    RUNNER,
+    STUDENT_CALL,
     entry,
   ];
 
   return new Promise((done) => {
-    const child = spawn(process.execPath, args, { stdio: ['pipe', 'pipe', 'ignore', 'pipe'], env: {}, cwd: dirname(entry) });
-    const [stdin, stdout, , channel] = child.stdio as unknown as [Writable, Readable, null, Readable];
-    let result = '';
-    let bytes = 0;
+    const judge = spawn(process.execPath, judgeArgs, { stdio: ['pipe', 'ignore', 'ignore', 'pipe'], env: {}, windowsHide: true });
+    const [toJudge, , , fromJudge] = judge.stdio as unknown as [Writable, null, null, Readable];
+    let current: ChildProcess | null = null;
     let finished = false;
     const finish = (r: RunResult) => {
       if (finished) return;
       finished = true;
-      clearTimeout(timer);
-      // Có kết quả rồi thì dừng luôn: bài nộp có thể để lại timer/handle khiến tiến trình sống tiếp.
-      child.kill('SIGKILL');
+      clearTimeout(guard);
+      current?.kill('SIGKILL');
+      judge.kill('SIGKILL');
       done(r);
     };
-    const tooMuch = () => finish({ status: 'load_error', message: `Bài nộp in ra quá nhiều dữ liệu (> ${Math.round(maxOutput / 1024)} KB)` });
+    // Mỗi lần gọi đã có timeoutMs và tổng thời gian có deadline; đây chỉ là chốt chặn cuối nếu chính giám khảo bị treo.
+    const guard = setTimeout(() => finish({ status: 'timeout', timeoutMs }), deadline - Date.now() + 5000);
+    const reply = (msg: object) => toJudge.write(`${JSON.stringify(msg)}\n`);
 
-    const timer = setTimeout(() => finish({ status: 'timeout', timeoutMs }), timeoutMs);
+    // Một lần gọi vào bài nộp: tiến trình cô lập riêng, trả lời (v8.serialize) qua fd 3.
+    const call = (payload: string) => {
+      const budget = Math.min(timeoutMs, deadline - Date.now());
+      if (budget <= 0) return reply({ status: 'timeout' });
+      const child = spawn(process.execPath, callArgs, { stdio: ['pipe', 'ignore', 'ignore', 'pipe'], env: {}, cwd: dirname(entry), windowsHide: true });
+      current = child;
+      const [stdin, , , out] = child.stdio as unknown as [Writable, null, null, Readable];
+      const chunks: Buffer[] = [];
+      let size = 0;
+      let outcome: 'ok' | 'timeout' | 'too_big' = 'ok';
+      const timer = setTimeout(() => {
+        outcome = 'timeout';
+        child.kill('SIGKILL');
+      }, budget);
+      stdin.on('error', () => {});
+      stdin.end(Buffer.from(payload, 'base64'));
+      out.on('data', (c: Buffer) => {
+        size += c.length;
+        if (size > MAX_REPLY_BYTES) {
+          outcome = 'too_big';
+          child.kill('SIGKILL');
+        } else chunks.push(c);
+      });
+      child.on('error', () => {});
+      child.on('close', (code) => {
+        clearTimeout(timer);
+        current = null;
+        if (finished) return;
+        if (outcome !== 'ok') return reply({ status: outcome });
+        reply({ status: 'exit', code, payload: chunks.length ? Buffer.concat(chunks).toString('base64') : undefined });
+      });
+    };
 
-    stdin.on('error', () => {});
-    stdin.end(JSON.stringify({ nonce, tests: testsSource }));
-    stdout.on('data', (chunk: Buffer) => {
-      bytes += chunk.length;
-      if (bytes > maxOutput) tooMuch();
+    let buffer = '';
+    fromJudge.on('data', (chunk: Buffer) => {
+      buffer += chunk;
+      if (buffer.length > MAX_REPLY_BYTES * 2) return finish({ status: 'load_error', message: 'Kết quả chạy test quá lớn' });
+      let nl: number;
+      while ((nl = buffer.indexOf('\n')) >= 0) {
+        const line = buffer.slice(0, nl);
+        buffer = buffer.slice(nl + 1);
+        let msg: { type?: string; payload?: string; result?: unknown };
+        try {
+          msg = JSON.parse(line);
+        } catch {
+          return finish({ status: 'load_error', message: 'Kết quả chạy test bị hỏng' });
+        }
+        if (msg.type === 'call' && typeof msg.payload === 'string') call(msg.payload);
+        else if (msg.type === 'result') return finish(toRunResult(msg.result, timeoutMs));
+      }
     });
-    channel.on('data', (chunk: Buffer) => {
-      bytes += chunk.length;
-      if (bytes > maxOutput) return tooMuch();
-      result += chunk;
-      const line = result.split('\n').find((l) => l.startsWith(nonce));
-      if (line) finish(parseResult(line.slice(nonce.length)));
-    });
-    child.on('error', (err) => finish({ status: 'load_error', message: `Không chạy được test: ${err.message}` }));
-    child.on('close', (code) => finish({ status: 'load_error', message: `Tiến trình chạy test thoát mà không trả kết quả (mã ${code})` }));
+    toJudge.on('error', () => {});
+    toJudge.write(`${JSON.stringify({ tests })}\n`);
+    judge.on('error', (err) => finish({ status: 'load_error', message: `Không chạy được test: ${err.message}` }));
+    judge.on('close', (code) => finish({ status: 'load_error', message: `Tiến trình chạy test thoát mà không trả kết quả (mã ${code})` }));
   });
 }
 
-function parseResult(json: string): RunResult {
-  let parsed: { status: 'ok'; results: TestCaseResult[] } | { status: 'load_error'; message: string };
-  try {
-    parsed = JSON.parse(json);
-  } catch {
-    return { status: 'load_error', message: 'Kết quả chạy test bị hỏng' };
-  }
+function toRunResult(raw: unknown, timeoutMs: number): RunResult {
+  const parsed = raw as { status: 'ok'; results: TestCaseResult[] } | { status: 'load_error'; message: string } | { status: 'timeout' } | undefined;
+  if (!parsed || typeof parsed !== 'object') return { status: 'load_error', message: 'Kết quả chạy test bị hỏng' };
   if (parsed.status === 'load_error') return parsed;
+  if (parsed.status === 'timeout') return { status: 'timeout', timeoutMs };
   const passed = parsed.results.filter((r) => r.ok).length;
   return { status: 'ok', passed, total: parsed.results.length, results: parsed.results };
 }
