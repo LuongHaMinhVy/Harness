@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { google } from '@ai-sdk/google';
 import pc from 'picocolors';
+import type { LanguageModel, ToolSet } from 'ai';
 import { runQuestion } from './agent.js';
 import { autoApprove } from './approval.js';
 import { createLogger, type StepLog } from './logger.js';
@@ -78,6 +79,74 @@ function savedComments(steps: StepLog[]): string {
     .join('\n');
 }
 
+export type EvalAnswer = { steps: StepLog[]; text: string; costUsd: number };
+export type EvalDeps = {
+  golden: Golden;
+  ask: (student: string) => Promise<EvalAnswer>;
+  pauseMs?: number;
+  waitMs?: number;
+  sleep?: (ms: number) => Promise<void>;
+};
+export type EvalHooks = {
+  onStart?(student: string, index: number, total: number): void;
+  onWait?(student: string): void;
+  onRow?(outcome: Outcome, index: number, total: number): void;
+  onError?(student: string, message: string): void;
+};
+
+// Vòng chấm bộ đánh giá, dùng chung cho CLI (`pnpm eval`) và web: mỗi học viên một lịch sử trống,
+// giãn nhịp giữa các học viên, bị rate limit thì chờ rồi thử lại, lỗi ở một học viên không dừng cả bộ.
+export async function runEval(deps: EvalDeps, hooks: EvalHooks = {}): Promise<EvalReport> {
+  const sleep = deps.sleep ?? sleepMs;
+  const students = Object.keys(deps.golden);
+  const outcomes: Outcome[] = [];
+  for (const [i, student] of students.entries()) {
+    if (i > 0) await sleep(deps.pauseMs ?? 4000);
+    hooks.onStart?.(student, i, students.length);
+    let outcome: Outcome;
+    try {
+      const r = await retryOnRateLimit(() => deps.ask(student), {
+        waitMs: deps.waitMs ?? 30_000,
+        sleep,
+        onWait: () => hooks.onWait?.(student),
+      });
+      outcome = { student, aiScore: extractScore(r.steps), answer: `${r.text}
+${savedComments(r.steps)}`, costUsd: r.costUsd };
+    } catch (e) {
+      outcome = { student, aiScore: null, answer: '', costUsd: 0 };
+      hooks.onError?.(student, describeApiError(e));
+    }
+    outcomes.push(outcome);
+    hooks.onRow?.(outcome, i, students.length);
+  }
+  return scoreEval(deps.golden, outcomes);
+}
+
+// Tạo hàm chấm một học viên với lịch sử trống, ghi log vào logger.
+export function createEvalAsk(o: {
+  model: LanguageModel;
+  system: string;
+  tools: ToolSet;
+  maxSteps: number;
+  logger: ReturnType<typeof createLogger>;
+}): (student: string) => Promise<EvalAnswer> {
+  let n = 0;
+  return async (student) => {
+    const question = `Chấm bài của ${student}`;
+    o.logger.startQuestion(++n, question);
+    const r = await runQuestion({
+      model: o.model,
+      system: o.system,
+      history: [{ role: 'user', content: question }],
+      tools: o.tools,
+      maxSteps: o.maxSteps,
+      onStep: o.logger.step,
+    });
+    const total = o.logger.endQuestion(r.steps, r.totalMs, r.hitLimit, o.maxSteps);
+    return { steps: r.steps, text: r.text, costUsd: total.costUsd };
+  };
+}
+
 async function main() {
   if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
     console.error(pc.red('Thiếu GOOGLE_GENERATIVE_AI_API_KEY — xem .env.example.'));
@@ -86,45 +155,32 @@ async function main() {
   const golden: Golden = JSON.parse(readFileSync('eval/golden.json', 'utf8'));
   const modelId = process.env.MODEL ?? 'gemini-2.5-flash';
   const maxSteps = Number(process.env.MAX_STEPS ?? 6);
-  const logger = createLogger({ file: `logs/eval-${new Date().toISOString().replaceAll(':', '-')}.jsonl`, print: () => {} });
-  const tools = createTools({
-    dataDir: 'data',
-    cache: createTestCache('.cache/tests.json'),
-    approve: autoApprove,
-    gradesFile: 'data/grades-eval.json',
+  const ask = createEvalAsk({
+    model: google(modelId),
+    system: buildSystemPrompt('data'),
+    tools: createTools({
+      dataDir: 'data',
+      cache: createTestCache('.cache/tests.json'),
+      approve: autoApprove,
+      gradesFile: 'data/grades-eval.json',
+    }),
+    maxSteps,
+    logger: createLogger({ file: `logs/eval-${new Date().toISOString().replaceAll(':', '-')}.jsonl`, print: () => {} }),
   });
-  const system = buildSystemPrompt('data');
-  const outcomes: Outcome[] = [];
 
-  const students = Object.keys(golden);
-  for (const [i, student] of students.entries()) {
-    if (i > 0) await sleepMs(4000); // giãn nhịp giữa các học viên cho free tier
-    process.stdout.write(`▶ Chấm ${student}… `);
-    try {
-      logger.startQuestion(i + 1, `Chấm bài của ${student}`);
-      const r = await retryOnRateLimit(
-        () =>
-          runQuestion({
-            model: google(modelId),
-            system,
-            history: [{ role: 'user', content: `Chấm bài của ${student}` }],
-            tools,
-            maxSteps,
-            onStep: logger.step,
-          }),
-        { waitMs: 30_000, onWait: () => process.stdout.write(pc.yellow('rate limit, chờ 30s… ')) },
-      );
-      const total = logger.endQuestion(r.steps, r.totalMs, r.hitLimit, maxSteps);
-      const aiScore = extractScore(r.steps);
-      outcomes.push({ student, aiScore, answer: `${r.text}\n${savedComments(r.steps)}`, costUsd: total.costUsd });
-      console.log(aiScore === null ? pc.yellow('không có điểm') : `${aiScore}/10`);
-    } catch (e) {
-      outcomes.push({ student, aiScore: null, answer: '', costUsd: 0 });
-      console.log(pc.red(`✖ ${describeApiError(e)}`));
-    }
-  }
+  const report = await runEval(
+    { golden, ask },
+    {
+      onStart: (student) => process.stdout.write(`▶ Chấm ${student}… `),
+      onWait: () => process.stdout.write(pc.yellow('rate limit, chờ 30s… ')),
+      onError: (_student, message) => console.log(pc.red(`✖ ${message}`)),
+      onRow: (o) => {
+        if (o.aiScore !== null) console.log(`${o.aiScore}/10`);
+        else if (o.answer) console.log(pc.yellow('không có điểm'));
+      },
+    },
+  );
 
-  const report = scoreEval(golden, outcomes);
   console.table(
     report.rows.map((r) => ({
       'học viên': r.student,

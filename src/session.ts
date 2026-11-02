@@ -40,6 +40,26 @@ export function describeApiError(e: unknown): string {
   return `Lỗi khi gọi model: ${message}`;
 }
 
+export type AskResult = { ok: true; outcome: RunOutcome } | { ok: false; message: string };
+
+// Dùng chung cho CLI và web: thêm câu hỏi vào lịch sử, chạy, nối câu trả lời;
+// lỗi thì gỡ câu hỏi ra để lịch sử không bị lệch (user message không có câu trả lời).
+export async function askWithHistory(
+  history: ModelMessage[],
+  question: string,
+  run: (history: ModelMessage[]) => Promise<RunOutcome>,
+): Promise<AskResult> {
+  history.push({ role: 'user', content: question });
+  try {
+    const outcome = await run(history);
+    history.push(...outcome.responseMessages);
+    return { ok: true, outcome };
+  } catch (e) {
+    history.pop();
+    return { ok: false, message: describeApiError(e) };
+  }
+}
+
 export function createSession(d: SessionDeps) {
   const history: ModelMessage[] = [];
   let maxSteps = d.maxSteps;
@@ -73,16 +93,8 @@ export function createSession(d: SessionDeps) {
       if (!line) return 'continue';
       if (line.startsWith('/')) return command(line);
 
-      history.push({ role: 'user', content: line });
-      try {
-        const outcome = await d.run(history, maxSteps);
-        history.push(...outcome.responseMessages);
-        d.print(`\n${pc.green('Trợ lý:')} ${outcome.text}`);
-      } catch (e) {
-        // Gỡ câu hỏi vừa thêm để lịch sử không bị lệch (user message không có câu trả lời).
-        history.pop();
-        d.print(pc.red(`✖ ${describeApiError(e)}`));
-      }
+      const r = await askWithHistory(history, line, (h) => d.run(h, maxSteps));
+      d.print(r.ok ? `\n${pc.green('Trợ lý:')} ${r.outcome.text}` : pc.red(`✖ ${r.message}`));
       return 'continue';
     },
   };

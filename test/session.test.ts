@@ -1,7 +1,7 @@
 import { APICallError, RetryError, type ModelMessage } from 'ai';
 import { expect, test, vi } from 'vitest';
 import type { RunOutcome } from '../src/agent.js';
-import { createSession, describeApiError } from '../src/session.js';
+import { askWithHistory, createSession, describeApiError } from '../src/session.js';
 
 const outcome = (text: string): RunOutcome => ({
   text,
@@ -92,4 +92,22 @@ test('describeApiError mạng → "Không kết nối được tới Gemini"', (
 test('describeApiError 401 / thiếu key → nhắc kiểm tra API key', () => {
   const err = new APICallError({ message: 'API key not valid', url: 'x', requestBodyValues: {}, statusCode: 400 });
   expect(describeApiError(err)).toContain('GOOGLE_GENERATIVE_AI_API_KEY');
+});
+
+test('askWithHistory thành công → history có user + responseMessages', async () => {
+  const history: ModelMessage[] = [];
+  const r = await askWithHistory(history, 'hỏi', async () => outcome('đáp'));
+  expect(r).toMatchObject({ ok: true });
+  expect(history).toEqual([
+    { role: 'user', content: 'hỏi' },
+    { role: 'assistant', content: 'đáp' },
+  ]);
+});
+
+test('askWithHistory lỗi → gỡ câu hỏi khỏi history, trả thông báo', async () => {
+  const history: ModelMessage[] = [{ role: 'user', content: 'cũ' }];
+  const r = await askWithHistory(history, 'mới', () => Promise.reject(rateLimit()));
+  expect(r.ok).toBe(false);
+  expect(!r.ok && r.message).toContain('giới hạn tốc độ');
+  expect(history).toEqual([{ role: 'user', content: 'cũ' }]);
 });
