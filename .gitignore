@@ -3,3 +3,4 @@ node_modules/
 logs/
 .cache/
 data/grades-eval.json
+.superpowers/
