@@ -1,0 +1,30 @@
+{
+  "name": "harness",
+  "version": "1.0.0",
+  "description": "Harness chấm bài lập trình JavaScript",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "start": "tsx src/cli.ts",
+    "eval": "tsx src/eval.ts",
+    "test": "vitest run",
+    "spike": "tsx scripts/spike.ts",
+    "typecheck": "tsc"
+  },
+  "keywords": [],
+  "type": "module",
+  "dependencies": {
+    "@ai-sdk/google": "^4.0.109",
+    "ai": "^7.0.159",
+    "dotenv": "^18.0.9",
+    "picocolors": "^1.1.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.5"
+  }
+}
