@@ -63,7 +63,7 @@ export function reduce(s: StateSnapshot, e: HarnessEvent): StateSnapshot {
     case 'eval-wait':
       return { ...s, eval: { ...s.eval, waiting: e.student } };
     case 'eval-row':
-      return { ...s, eval: { ...s.eval, rows: [...s.eval.rows, e.row], waiting: undefined } };
+      return { ...s, eval: { ...s.eval, rows: [...s.eval.rows, e.row], waiting: undefined, current: undefined } };
     case 'eval-done':
       return { ...s, eval: { running: false, rows: s.eval.rows, report: e.report } };
     case 'grade-saved':

@@ -19,7 +19,9 @@ export function ChatPanel({ snap, onAsk, onApprove, onSettings, onReset }: Props
   const bottom = useRef<HTMLDivElement>(null);
   const last = snap.turns.at(-1);
 
-  useEffect(() => bottom.current?.scrollIntoView({ block: 'end' }), [snap.turns]);
+  useEffect(() => {
+    bottom.current?.scrollIntoView({ block: 'end' });
+  }, [snap.turns]);
 
   const send = (e?: FormEvent) => {
     e?.preventDefault();

@@ -19,7 +19,13 @@ export function EvalPanel({ evalState, busy, onRun }: Props) {
 
       {running && (
         <p className="muted">
-          {waiting ? `Bị giới hạn tốc độ — chờ 30s rồi chấm lại ${waiting}…` : current ? `Đang chấm ${current}…` : 'Đang bắt đầu…'}
+          {waiting
+            ? `Bị giới hạn tốc độ — chờ 30s rồi chấm lại ${waiting}…`
+            : current
+              ? `Đang chấm ${current}…`
+              : rows.length
+                ? 'Giãn nhịp vài giây trước bài tiếp theo (tránh giới hạn tốc độ)…'
+                : 'Đang bắt đầu…'}
         </p>
       )}
 

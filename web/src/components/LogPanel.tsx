@@ -38,7 +38,9 @@ function Step({ step }: { step: StepLog }) {
 
 export function LogPanel({ turns }: { turns: Turn[] }) {
   const bottom = useRef<HTMLDivElement>(null);
-  useEffect(() => bottom.current?.scrollIntoView({ block: 'end' }), [turns]);
+  useEffect(() => {
+    bottom.current?.scrollIntoView({ block: 'end' });
+  }, [turns]);
 
   return (
     <section className="panel log" aria-label="Log từng lượt">

@@ -80,3 +80,12 @@ test('reduce không sửa trạng thái cũ (bất biến)', () => {
   reduce(before, { type: 'step', n: 1, step });
   expect(JSON.stringify(before)).toBe(snapshot);
 });
+
+test('eval-row xoá học viên đang chấm (đang giãn nhịp trước bài tiếp theo)', () => {
+  const s = run([
+    { type: 'eval-start', student: 'nam', index: 0, total: 2 },
+    { type: 'eval-row', row, index: 0, total: 2 },
+  ]);
+  expect(s.eval.current).toBeUndefined();
+  expect(s.eval.running).toBe(true);
+});

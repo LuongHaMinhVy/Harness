@@ -127,6 +127,8 @@ td.comments { white-space: pre-wrap; max-width: 420px; }
 
 @media (max-width: 900px) {
   .app { height: auto; min-height: 100vh; }
+  .topbar { flex-wrap: wrap; gap: 8px 12px; }
+  .topbar h1 { width: 100%; }
   .grade-layout { grid-template-columns: 1fr; }
   .panel { max-height: 70vh; }
 }
