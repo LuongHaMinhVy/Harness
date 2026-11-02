@@ -8,7 +8,7 @@ export type RunResult =
   | { status: 'timeout'; timeoutMs: number }
   | { status: 'load_error'; message: string };
 
-const RUNNER = fileURLToPath(new URL('./test-runner.cjs', import.meta.url));
+const RUNNER = fileURLToPath(new URL('./test-runner.cts', import.meta.url));
 const MARKER = '__RESULT__';
 
 // Chạy bộ test với bài nộp trong một tiến trình con riêng; quá timeoutMs thì kill.
