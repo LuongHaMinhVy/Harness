@@ -1,22 +1,30 @@
 import { getConnInfo } from '@hono/node-server/conninfo';
+import { APP_PATHS, type AppPaths } from '@harness/core/config';
 import type { Context } from 'hono';
 import { Hono } from 'hono';
 import { loadUser, requireAuth, requireRole, type AppEnv } from './auth/middleware.js';
 import { createLoginLimiter } from './auth/rateLimit.js';
 import { createSessionStore } from './auth/sessions.js';
 import type { Db } from './db/database.js';
+import { createAssignmentRepo } from './repos/assignments.js';
 import { createAuditRepo } from './repos/audit.js';
+import { createClassRepo } from './repos/classes.js';
 import { createUserRepo } from './repos/users.js';
+import { adminRoutes } from './routes/admin.js';
 import { authRoutes } from './routes/auth.js';
+import { teacherRoutes } from './routes/teacher.js';
 import { securityMiddleware } from './security.js';
 
 // Mọi phụ thuộc của server gom vào một chỗ: route chỉ nhận ctx, test thay được từng phần.
-export function createAppContext(db: Db, opts: { now?: () => number } = {}) {
+export function createAppContext(db: Db, opts: { now?: () => number; paths?: AppPaths } = {}) {
   const now = opts.now ?? Date.now;
   return {
     db,
     now,
+    paths: opts.paths ?? APP_PATHS,
     users: createUserRepo(db, now),
+    classes: createClassRepo(db, now),
+    assignments: createAssignmentRepo(db, now),
     sessions: createSessionStore(db, { now }),
     audit: createAuditRepo(db, now),
     loginLimiter: createLoginLimiter(db, { now }),
@@ -47,10 +55,8 @@ export function createServerApp(ctx: AppContext, opts: ServerOptions) {
   student.get('/assignments', (c) => c.json([]));
   app.route('/api/student', student);
 
-  const teacher = new Hono<AppEnv>();
-  teacher.use('*', requireAuth(), requireRole('teacher', 'admin'));
-  teacher.get('/classes', (c) => c.json([]));
-  app.route('/api/teacher', teacher);
+  app.route('/api/teacher', teacherRoutes(ctx));
+  app.route('/api/admin', adminRoutes(ctx));
 
   app.all('/api/*', (c) => c.json({ error: 'Không tìm thấy' }, 404));
   app.onError((err, c) => {
