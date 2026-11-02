@@ -126,6 +126,7 @@ export function createWebSession(d: WebSessionDeps) {
           {
             onStart: (student, index, total) => emit({ type: 'eval-start', student, index, total }),
             onWait: (student) => emit({ type: 'eval-wait', student }),
+            onError: (student, message) => emit({ type: 'eval-error', student, message }),
             onRow: (outcome, index, total) => {
               const row = scoreEval({ [outcome.student]: golden[outcome.student] }, [outcome]).rows[0];
               emit({ type: 'eval-row', row, index, total });
@@ -134,7 +135,10 @@ export function createWebSession(d: WebSessionDeps) {
         );
         emit({ type: 'eval-done', report });
       },
-      () => emit({ type: 'eval-done', report: scoreEval({}, []) }),
+      () => {
+        emit({ type: 'eval-error', student: '', message: 'Không chạy được bộ đánh giá (kiểm tra eval/golden.json) — xem log server.' });
+        emit({ type: 'eval-done', report: scoreEval({}, []) });
+      },
     );
     return 'started';
   }

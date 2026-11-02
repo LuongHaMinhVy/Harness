@@ -34,7 +34,15 @@ export type GradeRecord = { assignment: string; student: string; score: number; 
 
 export type BusyKind = 'ask' | 'eval' | null;
 
-export type EvalState = { running: boolean; rows: EvalRow[]; report?: EvalReport; waiting?: string; current?: string };
+export type EvalError = { student: string; message: string };
+export type EvalState = {
+  running: boolean;
+  rows: EvalRow[];
+  errors: EvalError[];
+  report?: EvalReport;
+  waiting?: string;
+  current?: string;
+};
 
 export type StateSnapshot = {
   /** seq của sự kiện cuối cùng đã áp dụng vào snapshot này. */
@@ -63,6 +71,8 @@ export type HarnessEvent =
   | { type: 'session'; total: SessionTotal }
   | { type: 'eval-start'; student: string; index: number; total: number }
   | { type: 'eval-wait'; student: string }
+  /** student rỗng: lỗi của cả bộ đánh giá (vd. golden.json hỏng). */
+  | { type: 'eval-error'; student: string; message: string }
   | { type: 'eval-row'; row: EvalRow; index: number; total: number }
   | { type: 'eval-done'; report: EvalReport };
 

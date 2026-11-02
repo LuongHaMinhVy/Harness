@@ -4,7 +4,7 @@ import { money } from '../format.js';
 type Props = { evalState: EvalState; busy: boolean; onRun: () => void };
 
 export function EvalPanel({ evalState, busy, onRun }: Props) {
-  const { rows, report, running, current, waiting } = evalState;
+  const { rows, report, running, current, waiting, errors } = evalState;
   return (
     <section className="panel page" aria-label="Bộ đánh giá">
       <div className="page-head">
@@ -79,6 +79,16 @@ export function EvalPanel({ evalState, busy, onRun }: Props) {
         !running && <p className="empty">Chưa chạy lần nào.</p>
       )}
       {report && report.noScore.length > 0 && <p className="warn">Không có điểm: {report.noScore.join(', ')}</p>}
+      {errors.length > 0 && (
+        <ul className="errors" role="alert">
+          {errors.map((e, i) => (
+            <li key={i}>
+              ✖ {e.student ? `${e.student}: ` : ''}
+              {e.message}
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
   );
 }

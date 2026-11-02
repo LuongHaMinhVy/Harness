@@ -130,3 +130,23 @@ test('mỗi sự kiện có seq tăng dần; snapshot.seq bằng seq của sự 
   expect(new Set(seqs).size).toBe(seqs.length);
   expect(session.snapshot().seq).toBe(seqs.at(-1));
 });
+
+test('runEval: lỗi API ở một học viên → sự kiện eval-error có lý do', async () => {
+  const keyError = new APICallError({ message: 'API key not valid', url: 'x', requestBodyValues: {}, statusCode: 400 });
+  const { session, events } = setup([{ throws: keyError }]);
+  session.runEval();
+  await session.idle();
+  const err = events.find((e) => e.type === 'eval-error');
+  expect(err).toMatchObject({ type: 'eval-error', student: 'nam' });
+  expect(err && err.type === 'eval-error' && err.message).toContain('GOOGLE_GENERATIVE_AI_API_KEY');
+  expect(session.snapshot().eval.errors).toHaveLength(1);
+});
+
+test('runEval: golden.json hỏng → eval-error chung, hết bận', async () => {
+  const { session, events, dir } = setup([{ text: 'x' }]);
+  writeFileSync(join(dir, 'golden.json'), '{hỏng');
+  session.runEval();
+  await session.idle();
+  expect(events.some((e) => e.type === 'eval-error' && e.student === '')).toBe(true);
+  expect(session.snapshot().busy).toBe(false);
+});

@@ -132,3 +132,4 @@ td.comments { white-space: pre-wrap; max-width: 420px; }
   .grade-layout { grid-template-columns: 1fr; }
   .panel { max-height: 70vh; }
 }
+.errors { color: var(--error); background: var(--error-bg); border-radius: 6px; padding: 8px 8px 8px 28px; margin: 8px 0 0; }

@@ -89,3 +89,13 @@ test('eval-row xoá học viên đang chấm (đang giãn nhịp trước bài t
   expect(s.eval.current).toBeUndefined();
   expect(s.eval.running).toBe(true);
 });
+
+test('eval-error lưu lý do lỗi theo học viên; eval-start index 0 xoá lỗi cũ', () => {
+  const s1 = run([
+    { type: 'eval-start', student: 'nam', index: 0, total: 1 },
+    { type: 'eval-error', student: 'nam', message: 'API key không hợp lệ' },
+  ]);
+  expect(s1.eval.errors).toEqual([{ student: 'nam', message: 'API key không hợp lệ' }]);
+  const s2 = run([{ type: 'eval-start', student: 'nam', index: 0, total: 1 }], s1);
+  expect(s2.eval.errors).toEqual([]);
+});

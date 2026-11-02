@@ -11,7 +11,7 @@ export function emptySnapshot(model: string, maxSteps: number): StateSnapshot {
     maxSteps,
     model,
     session: { input: 0, cached: null, output: 0, costUsd: 0, questions: 0 },
-    eval: { running: false, rows: [] },
+    eval: { running: false, rows: [], errors: [] },
   };
 }
 
@@ -58,14 +58,16 @@ export function reduce(s: StateSnapshot, e: HarnessEvent): StateSnapshot {
       return { ...s, session: e.total };
     case 'eval-start':
       return e.index === 0
-        ? { ...s, eval: { running: true, rows: [], current: e.student } }
+        ? { ...s, eval: { running: true, rows: [], errors: [], current: e.student } }
         : { ...s, eval: { ...s.eval, current: e.student, waiting: undefined } };
+    case 'eval-error':
+      return { ...s, eval: { ...s.eval, errors: [...s.eval.errors, { student: e.student, message: e.message }] } };
     case 'eval-wait':
       return { ...s, eval: { ...s.eval, waiting: e.student } };
     case 'eval-row':
       return { ...s, eval: { ...s.eval, rows: [...s.eval.rows, e.row], waiting: undefined, current: undefined } };
     case 'eval-done':
-      return { ...s, eval: { running: false, rows: s.eval.rows, report: e.report } };
+      return { ...s, eval: { running: false, rows: s.eval.rows, errors: s.eval.errors, report: e.report } };
     case 'grade-saved':
       return s;
   }
