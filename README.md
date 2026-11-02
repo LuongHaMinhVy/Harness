@@ -15,14 +15,14 @@ Bài tập buổi 2 · Xây dựng harness. Dựng bằng [Vercel AI SDK](https:
 | 5 | Cache hit từ câu thứ 2 | Lớp 1: prompt cache của Gemini (`cache …` mỗi lượt). Lớp 2: `src/toolCache.ts` cache kết quả `run_tests` theo sha256 → `CACHE HIT` |
 | 6 | Log từng lượt + chi phí mỗi câu | `src/logger.ts` (terminal + `logs/*.jsonl`), `src/pricing.ts` |
 | 7 | Lỗi không làm dừng harness | Tool: `safeTool()` trả lỗi cho model. Loop: ép trả lời ở lượt cuối. API: `session.ts` bắt lỗi, gỡ câu hỏi khỏi lịch sử, báo rõ |
-| + | Nâng cao | Duyệt y/n trước khi ghi điểm (`src/approval.ts`) · bộ đánh giá `npm run eval` so với điểm giáo viên (`eval/golden.json`) |
+| + | Nâng cao | Duyệt y/n trước khi ghi điểm (`src/approval.ts`) · bộ đánh giá `pnpm eval` so với điểm giáo viên (`eval/golden.json`) |
 
 ## Cài đặt
 
-Cần Node ≥ 20.
+Cần Node ≥ 20 và pnpm.
 
 ```bash
-npm install
+pnpm install
 cp .env.example .env
 ```
 
@@ -31,10 +31,10 @@ Tạo API key miễn phí tại <https://aistudio.google.com/apikey> và điền
 ## Sử dụng
 
 ```bash
-npm start        # trò chuyện với trợ lý chấm bài
-npm run eval     # chấm cả 5 bài mẫu và so với điểm giáo viên
-npm test         # unit test
-npm run spike    # kiểm tra prompt cache và giới hạn lượt trên Gemini thật
+pnpm start       # trò chuyện với trợ lý chấm bài
+pnpm eval       # chấm cả 5 bài mẫu và so với điểm giáo viên
+pnpm test       # unit test
+pnpm spike      # kiểm tra prompt cache và giới hạn lượt trên Gemini thật
 ```
 
 Lệnh trong phiên chat:
@@ -77,7 +77,7 @@ Bài `sum-array` (`data/assignments/sum-array/`) và 5 bài nộp (`data/submiss
 | 0:30–1:30 | Câu bình thường | "Chấm bài của Nam" → log từng lượt, duyệt `y`, dòng tổng chi phí |
 | 1:30–2:15 | Câu dựa vào câu trước | "So với bài của Lan thì ai tốt hơn?" → cache và `CACHE HIT` |
 | 2:15–3:30 | Gây lỗi | "Chấm bài của Hùng" (timeout) → "Chấm bài của Tuấn" (không tồn tại) → `/steps 2` + "Chấm bài của Minh" (hết lượt) |
-| 3:30–4:45 | Nâng cao | Từ chối duyệt `n`; `npm run eval` → bảng MAE |
+| 3:30–4:45 | Nâng cao | Từ chối duyệt `n`; `pnpm eval` → bảng MAE |
 | 4:45–5:00 | Kết | Link repo |
 
 ## Tài liệu thiết kế
