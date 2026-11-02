@@ -3,8 +3,9 @@
 const realWrite = process.stdout.write.bind(process.stdout);
 const silence = () => true;
 
+// In kết quả rồi thoát ngay: bài nộp có thể để lại timer/handle khiến tiến trình sống tiếp và bị tính nhầm là timeout.
 function report(result) {
-  realWrite(`\n__RESULT__${JSON.stringify(result)}\n`);
+  realWrite(`\n__RESULT__${JSON.stringify(result)}\n`, () => process.exit(0));
 }
 
 function describeLoadError(err) {

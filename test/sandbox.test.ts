@@ -31,3 +31,7 @@ test('process.exit trả load_error có mã thoát', async () => {
   expect(r.status).toBe('load_error');
   expect(r.status === 'load_error' && r.message).toContain('3');
 });
+
+test('bài đúng nhưng còn timer chạy nền vẫn được chấm ok, không bị coi là timeout', async () => {
+  expect(await runSubmission('test/fixtures/lingering.js', T, 1500)).toMatchObject({ status: 'ok', passed: 5 });
+}, 5000);
