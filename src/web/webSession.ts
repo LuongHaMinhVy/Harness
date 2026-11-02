@@ -165,6 +165,7 @@ export function createWebSession(d: WebSessionDeps) {
       }
     },
     historyLength: () => history.length,
+    listenerCount: () => listeners.size,
     idle: () => job,
   };
 }

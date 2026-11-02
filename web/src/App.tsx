@@ -39,14 +39,9 @@ export function App() {
   useEffect(
     () =>
       connectEvents({
-        onOpen: () => {
-          dispatch({ kind: 'connected', value: true });
-          api
-            .state()
-            .then((snap) => dispatch({ kind: 'snapshot', snap }))
-            .catch((e: Error) => setNotice(e.message));
-        },
+        onOpen: () => dispatch({ kind: 'connected', value: true }),
         onError: () => dispatch({ kind: 'connected', value: false }),
+        onSnapshot: (snap) => dispatch({ kind: 'snapshot', snap }),
         onEnvelope: (env) => dispatch({ kind: 'envelope', env }),
       }),
     [],

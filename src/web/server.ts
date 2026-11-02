@@ -32,19 +32,33 @@ export function createApp(d: AppDeps) {
   app.get('/api/state', (c) => c.json(session.snapshot()));
   app.get('/api/grades', (c) => c.json(session.grades()));
 
+  // Khung đầu tiên là snapshot, lấy cùng lúc với subscribe (cùng một tick, không sự kiện nào lọt giữa),
+  // nên giao diện không cần gọi /api/state riêng và không thể mất sự kiện khi tải lại trang.
   app.get('/api/events', (c) =>
     streamSSE(c, async (stream) => {
+      let closed = false;
+      let queue: Promise<void> = Promise.resolve();
+      // Ghi tuần tự để thứ tự khung trên dây đúng bằng thứ tự seq.
+      const send = (message: { event?: string; data: string }) => {
+        queue = queue.then(() => (closed ? undefined : stream.writeSSE(message))).catch(() => {});
+      };
+      send({ event: 'snapshot', data: JSON.stringify(session.snapshot()) });
       const unsubscribe = session.subscribe((event, seq) => {
         const envelope: EventEnvelope = { seq, event };
-        void stream.writeSSE({ data: JSON.stringify(envelope) });
+        send({ data: JSON.stringify(envelope) });
       });
-      stream.onAbort(() => {
+      const close = () => {
+        if (closed) return;
+        closed = true;
         unsubscribe();
-      });
-      while (!stream.aborted) {
+      };
+      stream.onAbort(close);
+      c.req.raw.signal.addEventListener('abort', close);
+      while (!closed && !stream.aborted) {
         await stream.sleep(HEARTBEAT_MS);
-        if (!stream.aborted) await stream.writeSSE({ event: 'ping', data: '' });
+        send({ event: 'ping', data: '' });
       }
+      close();
     }),
   );
 

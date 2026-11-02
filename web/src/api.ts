@@ -12,7 +12,6 @@ const post = (path: string, body: unknown = {}) =>
   request<{ ok: true }>(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
 
 export const api = {
-  state: () => request<StateSnapshot>('/api/state'),
   grades: () => request<GradeRecord[]>('/api/grades'),
   ask: (question: string) => post('/api/ask', { question }),
   approve: (id: string, approved: boolean) => post('/api/approve', { id, approved }),
@@ -21,15 +20,18 @@ export const api = {
   runEval: () => post('/api/eval'),
 };
 
-// EventSource tự kết nối lại khi mất kết nối; mỗi lần mở lại, App tải snapshot mới.
+// EventSource tự kết nối lại khi mất kết nối. Mỗi kết nối (kể cả kết nối lại) nhận snapshot làm khung đầu tiên,
+// rồi mới đến các sự kiện mới hơn — cùng một luồng nên không thể lệch thứ tự hay mất sự kiện.
 export function connectEvents(h: {
   onOpen: () => void;
   onError: () => void;
+  onSnapshot: (snap: StateSnapshot) => void;
   onEnvelope: (env: EventEnvelope) => void;
 }): () => void {
   const source = new EventSource('/api/events');
   source.onopen = h.onOpen;
   source.onerror = h.onError;
+  source.addEventListener('snapshot', (m) => h.onSnapshot(JSON.parse(m.data) as StateSnapshot));
   source.onmessage = (m) => h.onEnvelope(JSON.parse(m.data) as EventEnvelope);
   return () => source.close();
 }

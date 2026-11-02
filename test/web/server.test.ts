@@ -1,7 +1,7 @@
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { expect, test } from 'vitest';
+import { expect, test, vi } from 'vitest';
 import { createApp } from '../../src/web/server.js';
 import { createWebSession } from '../../src/web/webSession.js';
 import { scriptedModel, type ScriptStep } from '../helpers/mockModel.js';
@@ -128,4 +128,54 @@ test('lỗi trả về không chứa stack trace hay đường dẫn file', asyn
   const { post } = setup();
   const text = await (await post('/api/ask', '{hỏng')).text();
   expect(text).not.toMatch(/\bat\s.+\(|\.ts:\d+|node_modules/);
+});
+
+// --- SSE ---
+
+test('HEAD /api/events → 405, không để lại listener', async () => {
+  const { app, session } = setup();
+  const res = await app.request(`${BASE}/api/events`, { method: 'HEAD' });
+  expect(res.status).toBe(405);
+  expect(session.listenerCount()).toBe(0);
+});
+
+test('request có Sec-Fetch-Site cross-site → 403 (kể cả GET)', async () => {
+  const { app } = setup();
+  const res = await app.request(`${BASE}/api/events`, { headers: { 'Sec-Fetch-Site': 'cross-site' } });
+  expect(res.status).toBe(403);
+  expect((await app.request(`${BASE}/api/state`, { headers: { 'Sec-Fetch-Site': 'same-site' } })).status).toBe(403);
+  expect((await app.request(`${BASE}/api/state`, { headers: { 'Sec-Fetch-Site': 'same-origin' } })).status).toBe(200);
+});
+
+test('GET /api/events bị huỷ → gỡ listener', async () => {
+  const { app, session } = setup();
+  const ctrl = new AbortController();
+  const res = await app.request(`${BASE}/api/events`, { signal: ctrl.signal });
+  const reader = res.body!.getReader();
+  await reader.read();
+  expect(session.listenerCount()).toBe(1);
+  ctrl.abort();
+  await reader.cancel().catch(() => {});
+  await vi.waitFor(() => expect(session.listenerCount()).toBe(0));
+});
+
+test('SSE: khung đầu là snapshot, sự kiện sau có seq lớn hơn snapshot.seq', async () => {
+  const { app, session } = setup([{ text: 'chào' }]);
+  const ctrl = new AbortController();
+  const res = await app.request(`${BASE}/api/events`, { signal: ctrl.signal });
+  const reader = res.body!.getReader();
+  const decoder = new TextDecoder();
+  let text = '';
+  while (!text.includes('\n\n')) text += decoder.decode((await reader.read()).value);
+  expect(text).toMatch(/^event: snapshot\ndata: /);
+  const snap = JSON.parse(text.split('data: ')[1]);
+
+  session.ask('xin chào');
+  await session.idle();
+  while (!text.includes('"answer"')) text += decoder.decode((await reader.read()).value);
+  const seqs = [...text.matchAll(/"seq":(\d+),"event"/g)].map((m) => Number(m[1]));
+  expect(seqs.length).toBeGreaterThan(0);
+  expect(Math.min(...seqs)).toBe(snap.seq + 1);
+  ctrl.abort();
+  await reader.cancel().catch(() => {});
 });
