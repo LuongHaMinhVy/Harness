@@ -1,19 +1,16 @@
 import 'dotenv/config';
 import { createInterface } from 'node:readline/promises';
-import { google } from '@ai-sdk/google';
 import pc from 'picocolors';
 import { runQuestion } from '@harness/core/agent';
 import { createConsoleApprover } from '@harness/core/approval';
 import { createLogger } from '@harness/core/logger';
-import { countCalls, createQuotaCounter } from '@harness/core/quota';
-import { withRateLimitRetry } from '@harness/core/rateLimit';
+import { createHarnessModel } from '@harness/core/models';
 import { buildSystemPrompt } from '@harness/core/prompt';
 import { createSession } from '@harness/core/session';
 import { createTestCache } from '@harness/core/toolCache';
 import { createTools } from '@harness/core/tools';
 
 const DATA_DIR = 'data';
-const modelId = process.env.MODEL ?? 'gemini-2.5-flash';
 const maxSteps = Number(process.env.MAX_STEPS ?? 6);
 
 if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
@@ -35,12 +32,11 @@ const tools = createTools({
 const system = buildSystemPrompt(DATA_DIR);
 let questionNo = 0;
 
-// Gói miễn phí giới hạn số lần gọi mỗi phút: bị chặn thì chờ đúng thời gian Gemini yêu cầu rồi gọi lại lượt đó.
-// Free tier chỉ có 20 lần gọi/ngày: đếm lại để biết còn bao nhiêu lượt cho buổi demo.
-const quota = createQuotaCounter(`.cache/quota-${modelId}.json`);
-const model = withRateLimitRetry(countCalls(google(modelId), quota.record), {
-  onWait: (ms) => console.log(pc.yellow(`         ⏳ Gemini giới hạn tốc độ (free tier) — đợi ${Math.round(ms / 1000)}s rồi gọi lại lượt này…`)),
-});
+// Gemini (có Groq dự phòng nếu .env có GROQ_API_KEY); free tier chỉ 20 lần gọi/ngày nên log in số lần đã dùng.
+const { model, label: modelLabel, quotaLabel } = createHarnessModel(process.env, (msg) =>
+  console.log(pc.yellow(`         ${msg}`)),
+);
+const quota = { label: quotaLabel };
 
 const session = createSession({
   maxSteps,
@@ -61,7 +57,7 @@ const session = createSession({
 });
 
 console.log(pc.bold('Trợ lý chấm bài lập trình — bài tập sum-array'));
-console.log(pc.dim(`Model: ${modelId} · tối đa ${maxSteps} lượt/câu · /steps N · /reset · /cost · /exit`));
+console.log(pc.dim(`Model: ${modelLabel} · tối đa ${maxSteps} lượt/câu · /steps N · /reset · /cost · /exit`));
 console.log(pc.dim(quota.label()));
 
 rl.on('SIGINT', () => {

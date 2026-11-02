@@ -18,21 +18,24 @@ function body(e: unknown): string {
   return APICallError.isInstance(e) ? (e.responseBody ?? '') : '';
 }
 
-function is429(e: unknown): boolean {
+export function is429(e: unknown): boolean {
   return APICallError.isInstance(e) && e.statusCode === 429;
 }
 
-// Gemini báo thời gian chờ trong RetryInfo.retryDelay ("27s"), hoặc trong câu "Please retry in 12.3s".
+// Thời gian chờ provider yêu cầu: Gemini ghi trong RetryInfo.retryDelay ("27s") hoặc câu "Please retry in 12.3s";
+// Groq gửi header retry-after (giây) và câu "Please try again in 7.66s".
 export function retryDelayMs(e: unknown): number | null {
   const fromBody = body(e).match(/"retryDelay"\s*:\s*"([\d.]+)s"/)?.[1];
-  const fromMessage = (e instanceof Error ? e.message : '').match(/retry in ([\d.]+)s/i)?.[1];
-  const seconds = Number(fromBody ?? fromMessage);
-  return fromBody || fromMessage ? Math.round(seconds * 1000) : null;
+  const fromHeader = APICallError.isInstance(e) ? e.responseHeaders?.['retry-after'] : undefined;
+  const fromMessage = (e instanceof Error ? e.message : '').match(/(?:retry|try again) in ([\d.]+)s/i)?.[1];
+  const seconds = fromBody ?? fromHeader ?? fromMessage;
+  return seconds && Number.isFinite(Number(seconds)) ? Math.round(Number(seconds) * 1000) : null;
 }
 
 /** Hết quota trong ngày (không phải theo phút): chờ vài chục giây cũng vô ích. */
 export function isDailyQuota(e: unknown): boolean {
-  return is429(e) && /PerDay/i.test(body(e));
+  // Gemini: quotaId "...PerDay..." trong body · Groq: "requests per day (RPD)" / "tokens per day (TPD)" trong message.
+  return is429(e) && /PerDay|per day|\b(RPD|TPD)\b/i.test(`${body(e)} ${e instanceof Error ? e.message : ''}`);
 }
 
 // Bị giới hạn tốc độ (429) giữa chừng: chờ đúng thời gian provider yêu cầu rồi gọi lại chính lượt đó,

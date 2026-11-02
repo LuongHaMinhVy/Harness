@@ -35,17 +35,21 @@ export function isRateLimit(e: unknown): boolean {
 
 export function describeApiError(e: unknown): string {
   const { status, message } = rootError(e);
+  // Lỗi có thể đến từ Groq (model dự phòng) khi Gemini đã bị giới hạn: nói đúng tên và đúng biến môi trường.
+  const isGroq = /api\.groq\.com/.test(String((rootErrorObject(e) as { url?: string } | undefined)?.url ?? ''));
+  const who = isGroq ? 'Groq' : 'Gemini';
+  const keyVar = isGroq ? 'GROQ_API_KEY' : 'GOOGLE_GENERATIVE_AI_API_KEY';
   if (isDailyQuota(rootErrorObject(e))) {
-    return 'Đã hết quota miễn phí trong ngày của Gemini — thử lại vào ngày mai, hoặc đổi MODEL/API key trong .env.';
+    return `Đã hết quota miễn phí trong ngày của ${who} — thử lại vào ngày mai, hoặc đổi model/API key trong .env.`;
   }
   if (isRateLimit(e)) {
-    return 'Gemini vẫn đang giới hạn tốc độ (free tier) sau khi đã chờ — đợi khoảng 1 phút rồi hỏi lại.';
+    return `${who} vẫn đang giới hạn tốc độ (free tier) sau khi đã chờ — đợi khoảng 1 phút rồi hỏi lại.`;
   }
   if (status === 401 || status === 403 || /api.?key/i.test(message) || (status === 400 && /key/i.test(message))) {
-    return 'API key không hợp lệ hoặc thiếu — kiểm tra GOOGLE_GENERATIVE_AI_API_KEY trong .env.';
+    return `API key không hợp lệ hoặc thiếu — kiểm tra ${keyVar} trong .env.`;
   }
   if (/fetch failed|ECONNREFUSED|ENOTFOUND|ETIMEDOUT|ECONNRESET|network/i.test(message)) {
-    return 'Không kết nối được tới Gemini — kiểm tra mạng.';
+    return `Không kết nối được tới ${who} — kiểm tra mạng.`;
   }
   return `Lỗi khi gọi model: ${message}`;
 }

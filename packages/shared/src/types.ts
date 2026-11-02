@@ -14,6 +14,10 @@ export type StepLog = {
   usage: Usage;
   /** Khối usage gốc của provider: SDK có thể bỏ sót trường (vd. cache) khi đổi provider. */
   rawUsage?: unknown;
+  /** Model đã trả lời lượt này (tính giá theo model này). */
+  model?: string;
+  /** Lượt do model dự phòng (Groq) trả lời vì model chính bị giới hạn. */
+  fallback?: boolean;
   ms: number;
 };
 

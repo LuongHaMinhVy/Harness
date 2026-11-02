@@ -1,9 +1,7 @@
-import { google } from '@ai-sdk/google';
-import { countCalls, createQuotaCounter } from '@harness/core/quota';
-import { withRateLimitRetry } from '@harness/core/rateLimit';
+import { createHarnessModel } from '@harness/core/models';
 
-// Model Gemini thật cho web (pnpm web, pnpm web:demo): đếm lần gọi theo quota ngày của free tier, và bị chặn theo phút
-// thì chờ đúng thời gian Gemini yêu cầu rồi gọi lại lượt đó. Thiếu API key thì dừng với hướng dẫn.
+// Model thật cho web (pnpm web, pnpm web:demo): Gemini, có Groq dự phòng nếu .env có GROQ_API_KEY.
+// Thiếu key Gemini thì dừng với hướng dẫn.
 export function createGeminiModel() {
   if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
     console.error(
@@ -13,11 +11,7 @@ export function createGeminiModel() {
     );
     process.exit(1);
   }
-  const modelName = process.env.MODEL ?? 'gemini-2.5-flash';
-  const quota = createQuotaCounter(`.cache/quota-${modelName}.json`);
-  console.log(quota.label());
-  const model = withRateLimitRetry(countCalls(google(modelName), () => console.log(`Gemini: ${quota.record()}/${quota.limit} lần gọi hôm nay (free tier)`)), {
-    onWait: (ms) => console.log(`⏳ Gemini giới hạn tốc độ (free tier) — đợi ${Math.round(ms / 1000)}s rồi gọi lại…`),
-  });
-  return { model, modelName };
+  const { model, label, quotaLabel } = createHarnessModel(process.env, (s) => console.log(`${s}\n${quotaLabel()}`));
+  console.log(quotaLabel());
+  return { model, modelName: label };
 }

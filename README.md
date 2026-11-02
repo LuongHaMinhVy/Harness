@@ -38,6 +38,8 @@ cp .env.example .env
 
 Tạo API key miễn phí tại <https://aistudio.google.com/apikey> và điền vào `GOOGLE_GENERATIVE_AI_API_KEY` trong `.env`.
 
+Tuỳ chọn — **Groq dự phòng**: điền `GROQ_API_KEY` (miễn phí tại <https://console.groq.com/keys>). Khi Gemini bị giới hạn tốc độ sau khi đã chờ, hoặc hết quota ngày (free tier chỉ 20 lần gọi/ngày), lượt đó tự chuyển sang Groq `openai/gpt-oss-120b` (~1.000 lần gọi/ngày); log ghi `↪ dự phòng: openai/gpt-oss-120b` ở lượt đó và tính chi phí theo giá của Groq.
+
 ## Chạy web lớp học
 
 Tạo admin đầu tiên — chọn một trong hai cách:

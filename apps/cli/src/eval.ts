@@ -1,13 +1,11 @@
 // `pnpm eval`: chấm cả bộ bài mẫu và so với điểm giáo viên (eval/golden.json). `pnpm eval nam hung`: chỉ chấm vài bài.
 import 'dotenv/config';
 import { readFileSync } from 'node:fs';
-import { google } from '@ai-sdk/google';
 import pc from 'picocolors';
 import { autoApprove } from '@harness/core/approval';
 import { createEvalAsk, pickGolden, runEval, type Golden } from '@harness/core/eval';
 import { createLogger } from '@harness/core/logger';
-import { countCalls, createQuotaCounter } from '@harness/core/quota';
-import { withRateLimitRetry } from '@harness/core/rateLimit';
+import { createHarnessModel } from '@harness/core/models';
 import { buildSystemPrompt } from '@harness/core/prompt';
 import { createTestCache } from '@harness/core/toolCache';
 import { createTools } from '@harness/core/tools';
@@ -24,13 +22,11 @@ async function main() {
     console.error(pc.red(err instanceof Error ? err.message : String(err)));
     process.exit(1);
   }
-  const modelId = process.env.MODEL ?? 'gemini-2.5-flash';
   const maxSteps = Number(process.env.MAX_STEPS ?? 6);
-  const quota = createQuotaCounter(`.cache/quota-${modelId}.json`);
+  const { model, quotaLabel } = createHarnessModel(process.env, (msg) => process.stdout.write(pc.yellow(`${msg} `)));
+  const quota = { label: quotaLabel };
   const ask = createEvalAsk({
-    model: withRateLimitRetry(countCalls(google(modelId), quota.record), {
-      onWait: (ms) => console.log(pc.yellow(`⏳ Gemini giới hạn tốc độ (free tier) — đợi ${Math.round(ms / 1000)}s rồi gọi lại…`)),
-    }),
+    model,
     system: buildSystemPrompt('data'),
     tools: createTools({
       dataDir: 'data',

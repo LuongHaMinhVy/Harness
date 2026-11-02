@@ -48,6 +48,8 @@ function toStepLog(step: StepResult<ToolSet>, ms: number): StepLog {
     finishReason: step.finishReason,
     usage: usageOf(step.usage, step.providerMetadata),
     rawUsage: (step.usage as { raw?: unknown }).raw,
+    model: step.response?.modelId,
+    ...((step.providerMetadata?.harness as { fallback?: boolean } | undefined)?.fallback ? { fallback: true } : {}),
     ms,
   };
 }

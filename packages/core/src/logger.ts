@@ -1,7 +1,7 @@
 import { appendFileSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import pc from 'picocolors';
-import { costUsd, type Usage } from './pricing.js';
+import { stepsCost, type Usage } from './pricing.js';
 import { clip, summarizeToolOutput } from '@harness/shared/format';
 import type { StepLog } from '@harness/shared/types';
 
@@ -48,7 +48,8 @@ export function formatStep(s: StepLog): string {
     lines.push(`${i === 0 ? head : INDENT} ${pc.cyan(`🔧 ${c.name}`)} ${clip(JSON.stringify(c.input))}`);
     lines.push(`${INDENT}→ ${describeOutput(c.name, c.output)}`);
   });
-  lines.push(`${INDENT}${tokens(s.usage)} · ${s.ms}ms`);
+  const backup = s.fallback ? ` · ${pc.magenta(`↪ dự phòng: ${s.model}`)}` : '';
+  lines.push(`${INDENT}${tokens(s.usage)} · ${s.ms}ms${backup}`);
   return lines.join('\n');
 }
 
@@ -68,7 +69,7 @@ export function formatSummary(steps: StepLog[], totalMs: number, hitLimit: boole
   const cache = t.cached === null ? 'cache n/a' : `cache ${t.cached.toLocaleString('en-US')}`;
   const line = pc.bold(
     `─ Tổng: ${steps.length} lượt · in ${t.input.toLocaleString('en-US')} (${cache}) · out ${t.output} · ` +
-      `≈ ${money(costUsd(t))} (quy đổi) · ${(totalMs / 1000).toFixed(1)}s`,
+      `≈ ${money(stepsCost(steps))} (quy đổi) · ${(totalMs / 1000).toFixed(1)}s`,
   );
   if (!hitLimit) return line;
   return `${pc.yellow(`⚠ Đã dùng hết ${maxSteps}/${maxSteps} lượt — câu trả lời dựa trên thông tin hiện có`)}\n${line}`;
@@ -93,7 +94,7 @@ export function createLogger(opts: { file: string; print?: (s: string) => void }
     },
     endQuestion(steps: StepLog[], totalMs: number, hitLimit: boolean, maxSteps: number) {
       const t = sum(steps);
-      const cost = costUsd(t);
+      const cost = stepsCost(steps);
       print(formatSummary(steps, totalMs, hitLimit, maxSteps));
       write({ type: 'summary', steps: steps.length, ...t, costUsd: cost, totalMs, hitLimit });
       session.input += t.input;

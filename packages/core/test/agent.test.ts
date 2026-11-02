@@ -115,3 +115,16 @@ test('tool input sai schema → không ném lỗi, StepLog output { error: "inva
   expect(r.steps[0].toolCalls[0]).toMatchObject({ name: 'grade', output: { error: 'invalid_input' } });
   expect(r.text).toBe('đã sửa');
 });
+
+test('StepLog ghi model trả lời lượt đó, và cờ dự phòng khi middleware gắn nhãn', async () => {
+  const model = new MockLanguageModelV4({
+    modelId: 'gemini-2.5-flash',
+    doGenerate: async () => ({
+      ...answer('ok'),
+      response: { modelId: 'openai/gpt-oss-120b' },
+      providerMetadata: { harness: { fallback: true, model: 'openai/gpt-oss-120b' } },
+    }),
+  });
+  const r = await runQuestion({ ...base, model, maxSteps: 2 });
+  expect(r.steps[0]).toMatchObject({ model: 'openai/gpt-oss-120b', fallback: true });
+});

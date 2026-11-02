@@ -30,6 +30,7 @@ export function Step({ step }: { step: StepLog }) {
         })}
         <div className="tokens">
           {tokens(step.usage)} · {step.ms}ms
+          {step.fallback && <span className="fallback"> · ↪ dự phòng: {step.model}</span>}
         </div>
       </div>
     </div>

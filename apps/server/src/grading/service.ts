@@ -2,7 +2,7 @@ import { join, relative } from 'node:path';
 import { readFileSync } from 'node:fs';
 import { runQuestion } from '@harness/core/agent';
 import { autoApprove, type GradeRequest } from '@harness/core/approval';
-import { costUsd } from '@harness/core/pricing';
+import { stepsCost } from '@harness/core/pricing';
 import { buildSystemPrompt } from '@harness/core/prompt';
 import { describeApiError } from '@harness/core/session';
 import type { TestCache } from '@harness/core/toolCache';
@@ -117,7 +117,7 @@ export function createGradingService(d: GradingDeps) {
         tests,
         flags: gradingFlags({ aiScore: p?.score ?? null, tests, sources, hitLimit: out.hitLimit }),
         steps,
-        usage: { ...totals, costUsd: costUsd(totals), totalMs: out.totalMs, steps: steps.length, hitLimit: out.hitLimit },
+        usage: { ...totals, costUsd: stepsCost(steps), totalMs: out.totalMs, steps: steps.length, hitLimit: out.hitLimit },
       });
       emit('done');
     } catch (err) {

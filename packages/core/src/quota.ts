@@ -14,7 +14,7 @@ export function quotaDay(now: Date): string {
 
 // Đếm số lần gọi model trong ngày quota, lưu ra file để CLI, eval và web dùng chung một con số.
 // Chỉ là ước tính trên máy này: cùng API key dùng ở nơi khác thì Google vẫn tính, file này không biết.
-export function createQuotaCounter(file: string, o: { limit?: number; now?: () => Date } = {}) {
+export function createQuotaCounter(file: string, o: { limit?: number; now?: () => Date; name?: string } = {}) {
   const limit = o.limit ?? FREE_TIER_DAILY_LIMIT;
   const now = o.now ?? (() => new Date());
   const read = (): { day: string; count: number } => {
@@ -38,7 +38,7 @@ export function createQuotaCounter(file: string, o: { limit?: number; now?: () =
       return count;
     },
     label(): string {
-      return `Quota free tier hôm nay: ${used()}/${limit} lần gọi Gemini (đếm trên máy này)`;
+      return `Quota free tier hôm nay: ${used()}/${limit} lần gọi ${o.name ?? 'Gemini'} (đếm trên máy này)`;
     },
   };
 }

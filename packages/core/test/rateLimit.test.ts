@@ -82,3 +82,10 @@ test('lỗi khác 429 → ném ngay, không chờ', async () => {
   await expect(call()).rejects.toThrow(/API key/);
   expect(waits).toEqual([]);
 });
+
+test('retryDelayMs đọc kiểu Groq: header retry-after, hoặc "Please try again in 7.66s"', () => {
+  const groq = (message: string, headers?: Record<string, string>) =>
+    new APICallError({ message, url: 'https://api.groq.com/openai/v1/chat/completions', requestBodyValues: {}, statusCode: 429, responseHeaders: headers });
+  expect(retryDelayMs(groq('Rate limit reached', { 'retry-after': '12' }))).toBe(12_000);
+  expect(retryDelayMs(groq('Rate limit reached for model on tokens per minute (TPM). Please try again in 7.66s.'))).toBe(7_660);
+});

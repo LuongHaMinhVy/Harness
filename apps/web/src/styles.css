@@ -381,3 +381,6 @@ details summary { cursor: pointer; color: var(--muted); }
   .card-grid { grid-template-columns: 1fr; }
   .version-item { flex-direction: column; align-items: flex-start; }
 }
+
+/* Lượt do model dự phòng (Groq) trả lời khi Gemini bị giới hạn */
+.tokens .fallback { color: #a21caf; font-weight: 600; }

@@ -123,3 +123,12 @@ test('askWithHistory lỗi → gỡ câu hỏi khỏi history, trả thông báo
   expect(!r.ok && r.message).toContain('giới hạn tốc độ');
   expect(history).toEqual([{ role: 'user', content: 'cũ' }]);
 });
+
+test('describeApiError lỗi từ Groq (dự phòng) → nói đúng Groq và GROQ_API_KEY; hết quota ngày của Groq cũng nhận ra', () => {
+  const groq = (statusCode: number, message: string) =>
+    new APICallError({ message, url: 'https://api.groq.com/openai/v1/chat/completions', requestBodyValues: {}, statusCode });
+  expect(describeApiError(groq(401, 'Invalid API Key'))).toContain('GROQ_API_KEY');
+  const daily = describeApiError(groq(429, 'Rate limit reached for model openai/gpt-oss-120b on requests per day (RPD): Limit 1000'));
+  expect(daily).toMatch(/Groq/);
+  expect(daily).toMatch(/trong ngày/);
+});
