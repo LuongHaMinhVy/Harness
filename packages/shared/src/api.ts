@@ -101,6 +101,45 @@ export type StudentAssignment = Assignment & { latest: Submission | null; grade:
 export type StudentAssignmentDetail = StudentAssignment & { submissions: Submission[] };
 export type FileContent = { path: string; content: string };
 
+// --- Chấm bài ---
+
+export type GradingStatus = 'queued' | 'running' | 'done' | 'error';
+/** Tóm tắt kết quả run_tests mà AI đã chạy. */
+export type TestSummary = { status: 'ok' | 'timeout' | 'load_error'; passed?: number; total?: number; failed?: string[]; message?: string };
+export type GradingUsage = { input: number; cached: number | null; output: number; costUsd: number; totalMs: number; steps: number; hitLimit: boolean };
+/** Một lần AI chấm: điểm đề xuất (chưa chính thức) + cờ cảnh báo; `steps` chỉ có trong chi tiết. */
+export type Grading = {
+  id: number;
+  submissionId: number;
+  status: GradingStatus;
+  aiScore: number | null;
+  aiComments: string | null;
+  tests: TestSummary | null;
+  flags: string[];
+  error: string | null;
+  usage: GradingUsage | null;
+  createdAt: number;
+  finishedAt: number | null;
+  steps?: unknown[];
+};
+export type StudentRef = { id: number; username: string; fullName: string };
+export type SubmissionRow = { student: StudentRef; submission: Submission | null; grading: Grading | null; grade: Grade | null };
+export type TeacherSubmissionDetail = {
+  assignment: Assignment;
+  student: StudentRef;
+  submission: Submission;
+  grading: Grading | null;
+  grade: Grade | null;
+  history: Submission[];
+};
+export type GradingEvent = { type: 'grading'; assignmentId: number; submissionId: number; gradingId: number; status: GradingStatus };
+
+export const GradeApproveBody = z.object({
+  score: z.number().min(0).max(10),
+  comments: z.string().trim().min(1, 'Nhận xét không được để trống').max(5000),
+});
+export const GradeAllBody = z.object({ regrade: z.boolean().optional() });
+
 export const GithubSubmitBody = z.object({ url: z.string().trim().min(1, 'Hãy dán link repo GitHub').max(300) });
 
 export const AssignmentBody = z.object({
