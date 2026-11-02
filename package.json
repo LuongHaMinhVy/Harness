@@ -17,7 +17,10 @@
     "web": "pnpm web:build && tsx apps/server/src/main.ts",
     "web:mock": "pnpm web:build && tsx apps/server/src/mock/main.ts",
     "web:api": "tsx watch apps/server/src/main.ts --dev",
-    "web:ui": "pnpm --filter @harness/web dev"
+    "web:ui": "pnpm --filter @harness/web dev",
+    "admin:create": "tsx apps/server/src/cli/createAdmin.ts",
+    "seed:demo": "tsx apps/server/src/cli/seedDemo.ts",
+    "web:lan": "pnpm web:build && tsx apps/server/src/main.ts --lan"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",

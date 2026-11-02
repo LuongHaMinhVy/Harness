@@ -15,13 +15,22 @@ function report(result: RunnerResult): void {
   realWrite(`\n__RESULT__${JSON.stringify(result)}\n`, () => process.exit(0));
 }
 
-function describeLoadError(err: unknown): string {
+// Đổi đường dẫn tuyệt đối (thư mục bài nộp trên máy chủ) thành đường dẫn trong bài nộp, để thông báo lỗi
+// hiện cho giảng viên/học viên không lộ cấu trúc thư mục của máy chủ.
+function relativize(text: string, baseDir: string): string {
+  const variants = [baseDir, baseDir.replace(/\\/g, '/')].map((b) => (b.endsWith('/') || b.endsWith('\\') ? b : `${b}${b.includes('\\') ? '\\' : '/'}`));
+  let out = text;
+  for (const v of variants) out = out.split(v).join('');
+  return out.replace(/file:\/\/\/?/g, '');
+}
+
+function describeLoadError(err: unknown, baseDir: string): string {
   if (!(err instanceof Error)) return String(err);
   // Với SyntaxError, stack có dạng "<file>:<dòng>\n<code>\n   ^\n\nSyntaxError: ..." — giữ phần đó để chỉ ra dòng lỗi.
   const lines = String(err.stack ?? '').split('\n');
   const end = lines.findIndex((l) => l.startsWith(`${err.name}:`));
   const head = end >= 0 ? lines.slice(0, end + 1) : [`${err.name}: ${err.message}`];
-  return head.filter((l) => l.trim() !== '').join('\n').slice(0, 600);
+  return relativize(head.filter((l) => l.trim() !== '').join('\n'), baseDir).slice(0, 600);
 }
 
 async function main(): Promise<void> {
@@ -35,7 +44,7 @@ async function main(): Promise<void> {
   try {
     mod = require(submissionPath);
   } catch (err) {
-    report({ status: 'load_error', message: describeLoadError(err) });
+    report({ status: 'load_error', message: describeLoadError(err, require('node:path').dirname(submissionPath)) });
     return;
   }
 

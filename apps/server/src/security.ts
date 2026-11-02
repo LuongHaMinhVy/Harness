@@ -11,19 +11,23 @@ const UPLOAD_PATH = /^\/api\/student\/assignments\/\d+\/submissions$/;
 const json = (error: string, status: 403 | 405 | 413 | 415) =>
   new Response(JSON.stringify({ error }), { status, headers: { 'Content-Type': 'application/json' } });
 
-// Các lớp bảo vệ cho server chỉ chạy trên máy:
-// - Host phải là localhost/127.0.0.1 đúng cổng (chống DNS rebinding).
+// Các lớp bảo vệ của server:
+// - Host phải là localhost/127.0.0.1 (hoặc host được phép khi mở LAN) đúng cổng (chống DNS rebinding).
 // - Request từ website khác (Sec-Fetch-Site: cross-site/same-site) bị chặn, kể cả GET.
 // - POST phải có Origin của chính trang và Content-Type JSON (chống CSRF từ website khác);
 //   riêng route nộp bài nhận multipart/form-data.
 // - Giới hạn kích thước body, header bảo mật + CSP chặn script lạ.
-export function securityMiddleware(opts: { port: number; dev?: boolean }): MiddlewareHandler[] {
-  const ports = opts.dev ? [opts.port, VITE_DEV_PORT] : [opts.port];
-  const hosts = new Set(ports.flatMap((p) => [`127.0.0.1:${p}`, `localhost:${p}`]));
-  const origins = new Set([...hosts].map((h) => `http://${h}`));
+export function securityMiddleware(opts: { port: number; dev?: boolean; allowedHosts?: string[]; https?: boolean }): MiddlewareHandler[] {
+  const scheme = opts.https ? 'https' : 'http';
+  const names = ['127.0.0.1', 'localhost', ...(opts.allowedHosts ?? [])].map((h) => h.toLowerCase());
+  const defaultPort = opts.port === (opts.https ? 443 : 80);
+  const main = names.flatMap((h) => (defaultPort ? [`${h}:${opts.port}`, h] : [`${h}:${opts.port}`]));
+  const vite = opts.dev ? [`127.0.0.1:${VITE_DEV_PORT}`, `localhost:${VITE_DEV_PORT}`] : [];
+  const hosts = new Set([...main, ...vite]);
+  const origins = new Set([...main.map((h) => `${scheme}://${h}`), ...vite.map((h) => `http://${h}`)]);
 
   const checkRequest: MiddlewareHandler = async (c, next) => {
-    if (!hosts.has(new URL(c.req.url).host)) return json('Host không hợp lệ', 403);
+    if (!hosts.has(new URL(c.req.url).host.toLowerCase())) return json('Host không hợp lệ', 403);
     // Trình duyệt hiện đại gắn Sec-Fetch-Site cho mọi request; chặn cả GET/HEAD đến từ website khác.
     const site = c.req.header('sec-fetch-site');
     if (site === 'cross-site' || site === 'same-site') return json('Không nhận request từ website khác', 403);

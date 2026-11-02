@@ -2,7 +2,7 @@ import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Role } from '@harness/shared/api';
-import { createAppContext, createServerApp } from '../src/app.js';
+import { createAppContext, createServerApp, type ContextOptions } from '../src/app.js';
 import { hashPassword } from '../src/auth/password.js';
 import { openDatabase } from '../src/db/database.js';
 
@@ -21,7 +21,7 @@ export type Client = {
 };
 
 // Server thử nghiệm có sẵn: admin, 2 giảng viên (gv, gv2), 2 học viên (nam, lan) — đã đăng nhập sẵn.
-export async function createTestServer(extra: Partial<Parameters<typeof createAppContext>[1]> = {}) {
+export async function createTestServer(extra: ContextOptions = {}) {
   const dataDir = mkdtempSync(join(tmpdir(), 'srv-'));
   const ctx = createAppContext(memoryDb(), {
     paths: {

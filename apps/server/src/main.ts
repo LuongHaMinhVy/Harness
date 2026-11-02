@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { google } from '@ai-sdk/google';
 import { APP_PATHS } from '@harness/core/config';
+import { parseNetworkConfig } from './network.js';
 import { parseMaxSteps, parsePort, startWebServer } from './start.js';
 
 if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
@@ -13,11 +14,12 @@ if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
 }
 
 const modelName = process.env.MODEL ?? 'gemini-2.5-flash';
-startWebServer({
+await startWebServer({
   model: google(modelName),
   modelName,
   paths: APP_PATHS,
   maxSteps: parseMaxSteps(process.env.MAX_STEPS),
   port: parsePort(process.env.PORT),
   dev: process.argv.includes('--dev'),
+  network: parseNetworkConfig(process.env, process.argv),
 });

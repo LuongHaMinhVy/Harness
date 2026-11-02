@@ -39,9 +39,30 @@ function scoreFrom(run: Record<string, unknown>): { score: number; comments: str
 
 let calls = 0;
 
+// Câu hỏi chấm của web lớp học: 'Chấm bài nộp của học viên "<tên>" (…) cho bài "<mã>"…'
+// → list_files → đọc file chính → run_tests → save_grade (điểm theo tỉ lệ test đạt) → trả lời.
+function gradeWebSubmission(text: string, results: ToolResult[], toolChoice: string | undefined): Reply | null {
+  const student = text.match(/học viên "([^"]+)"/)?.[1];
+  const assignment = text.match(/cho bài "([^"]+)"/)?.[1];
+  if (!student || !assignment) return null;
+  if (toolChoice === 'none') return { text: 'Đã hết lượt — chưa chấm xong.' };
+  const last = results.at(-1);
+  if (last?.value.error) return { text: `Không chấm được: ${String(last.value.message)}` };
+  if (results.length === 0) return { tool: 'list_files', input: { assignment, student } };
+  if (results.length === 1) {
+    const listing = results[0].value as { base?: string; entry?: string };
+    return { tool: 'read_file', input: { path: `${listing.base}/${listing.entry}` } };
+  }
+  if (results.length === 2) return { tool: 'run_tests', input: { assignment, student } };
+  if (results.length === 3) return { tool: 'save_grade', input: { assignment, student, ...scoreFrom(results[2].value) } };
+  return { text: `Đã đề xuất điểm cho ${student}. ${scoreFrom(results[2].value).comments} (model giả — chỉ để thử giao diện)` };
+}
+
 function step(prompt: Message[], toolChoice: string | undefined): Reply {
   const { text, after } = lastUserText(prompt);
   const results = toolResults(after);
+  const web = gradeWebSubmission(text, results, toolChoice);
+  if (web) return web;
   const student = normalize(text).match(/cua\s+([a-z]+)/)?.[1];
 
   if (/html/i.test(text)) return { text: 'Thử hiển thị: <b>đậm</b> <script>alert("xss")</script> — phải hiện nguyên văn.' };

@@ -18,8 +18,12 @@ test('hung bị timeout', async () => {
   expect(await runSubmission(S('hung'), T, 1000)).toEqual({ status: 'timeout', timeoutMs: 1000 });
 }, 5000);
 
-test('minh lỗi cú pháp', async () => {
-  expect(await runSubmission(S('minh'), T)).toMatchObject({ status: 'load_error' });
+test('minh lỗi cú pháp: báo dòng lỗi theo đường dẫn trong bài nộp, không lộ đường dẫn tuyệt đối của máy chủ', async () => {
+  const r = await runSubmission(S('minh'), T);
+  expect(r).toMatchObject({ status: 'load_error' });
+  const message = r.status === 'load_error' ? r.message : '';
+  expect(message).toMatch(/^minh\.js:10/);
+  expect(message).not.toMatch(/[A-Za-z]:\|\/code\/|harness/);
 });
 
 test('console.log trong bài không làm hỏng kết quả', async () => {
