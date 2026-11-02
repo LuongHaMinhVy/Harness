@@ -41,15 +41,15 @@ function savedStudents(step: StepLog): string[] {
 // Phiên web duy nhất của server: bọc phần lõi (agent loop, tool, logger, eval), phát HarnessEvent cho SSE
 // và giữ snapshot bằng chính reducer mà giao diện dùng. Mỗi lúc chỉ chạy một việc (câu hỏi hoặc eval).
 export function createWebSession(d: WebSessionDeps) {
-  const listeners = new Set<(e: HarnessEvent) => void>();
+  const listeners = new Set<(e: HarnessEvent, seq: number) => void>();
   const history: ModelMessage[] = [];
   let state: StateSnapshot = emptySnapshot(d.modelName, d.maxSteps);
   let questionNo = 0;
   let job: Promise<void> = Promise.resolve();
 
   const emit = (e: HarnessEvent) => {
-    state = reduce(state, e);
-    for (const fn of listeners) fn(e);
+    state = { ...reduce(state, e), seq: state.seq + 1 };
+    for (const fn of listeners) fn(e, state.seq);
   };
   const setBusy = (kind: BusyKind) => emit({ type: 'busy', busy: kind !== null, kind });
 
@@ -140,7 +140,7 @@ export function createWebSession(d: WebSessionDeps) {
   }
 
   return {
-    subscribe(fn: (e: HarnessEvent) => void) {
+    subscribe(fn: (e: HarnessEvent, seq: number) => void) {
       listeners.add(fn);
       return () => listeners.delete(fn);
     },

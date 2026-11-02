@@ -9,7 +9,9 @@ export const PRICES = {
 };
 
 export type Prices = typeof PRICES;
-export type Usage = { input: number; cached: number | null; output: number };
+import type { Usage } from './shared/types.js';
+
+export type { Usage };
 
 export function costUsd(u: Usage, prices: Prices = PRICES): number {
   const cached = u.cached ?? 0;

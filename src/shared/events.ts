@@ -1,8 +1,7 @@
 // Kiểu dữ liệu dùng chung giữa server (src/web) và giao diện (web/src).
 // File này chỉ chứa type và schema zod, không phụ thuộc Node hay DOM.
 import { z } from 'zod';
-import type { EvalReport, EvalRow } from '../eval.js';
-import type { StepLog, Usage } from '../logger.js';
+import type { EvalReport, EvalRow, StepLog, Usage } from './types.js';
 
 export type { EvalReport, EvalRow, StepLog, Usage };
 
@@ -37,6 +36,8 @@ export type BusyKind = 'ask' | 'eval' | null;
 export type EvalState = { running: boolean; rows: EvalRow[]; report?: EvalReport; waiting?: string; current?: string };
 
 export type StateSnapshot = {
+  /** seq của sự kiện cuối cùng đã áp dụng vào snapshot này. */
+  seq: number;
   turns: Turn[];
   busy: boolean;
   busyKind: BusyKind;
@@ -63,6 +64,9 @@ export type HarnessEvent =
   | { type: 'eval-wait'; student: string }
   | { type: 'eval-row'; row: EvalRow; index: number; total: number }
   | { type: 'eval-done'; report: EvalReport };
+
+/** Gói gửi qua SSE: seq tăng dần để giao diện bỏ qua sự kiện đã có trong snapshot. */
+export type EventEnvelope = { seq: number; event: HarnessEvent };
 
 export const MAX_QUESTION_CHARS = 2000;
 

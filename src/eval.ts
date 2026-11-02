@@ -12,17 +12,9 @@ import { describeApiError, isRateLimit } from './session.js';
 import { createTestCache } from './toolCache.js';
 import { createTools } from './tools.js';
 
-export type Golden = Record<string, { score: number; mustMention: string[] }>;
-export type Outcome = { student: string; aiScore: number | null; answer: string; costUsd: number };
-export type EvalRow = Outcome & { goldScore: number; diff: number | null; mentionsOk: boolean; missing: string[] };
-export type EvalReport = {
-  rows: EvalRow[];
-  mae: number | null;
-  within1Pct: number;
-  mentionPct: number;
-  noScore: string[];
-  totalCostUsd: number;
-};
+import type { EvalReport, EvalRow, Golden, Outcome } from './shared/types.js';
+
+export type { EvalReport, EvalRow, Golden, Outcome };
 
 const pct = (n: number, total: number) => (total ? Math.round((n / total) * 1000) / 10 : 0);
 

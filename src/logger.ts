@@ -2,18 +2,11 @@ import { appendFileSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import pc from 'picocolors';
 import { costUsd, type Usage } from './pricing.js';
+import { clip, summarizeToolOutput } from './shared/format.js';
+import type { StepLog } from './shared/types.js';
 
-export type { Usage };
-export type StepLog = {
-  index: number;
-  toolCalls: { name: string; input: unknown; output: unknown }[];
-  text?: string;
-  finishReason: string;
-  usage: Usage;
-  ms: number;
-};
+export type { StepLog, Usage };
 
-const MAX_SHOWN = 200;
 const INDENT = '         ';
 
 // Chỗ duy nhất đọc tên trường usage của AI SDK (v7: inputTokenDetails.cacheReadTokens).
@@ -30,23 +23,12 @@ export function usageOf(usage: unknown, providerMetadata?: unknown): Usage {
   return { input: u.inputTokens ?? 0, cached, output: u.outputTokens ?? 0 };
 }
 
-const clip = (s: string) => (s.length > MAX_SHOWN ? `${s.slice(0, MAX_SHOWN - 1)}…` : s);
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function describeOutput(name: string, output: any): string {
-  if (output && typeof output === 'object' && 'error' in output) {
-    return pc.red(clip(`✖ ${name} → ${output.error}: ${output.message ?? ''}`));
-  }
-  if (name === 'run_tests' && output && typeof output === 'object') {
-    const cache = output.cached ? pc.green(`CACHE HIT (${output.cacheKey ?? ''}…)`) : `MISS · ${output.durationMs}ms`;
-    if (output.status === 'timeout') return `${pc.red(`TIMEOUT ${output.timeoutMs / 1000}s`)} · ${cache}`;
-    if (output.status === 'load_error') return `${pc.red(clip(`LOAD_ERROR: ${output.message}`))} · ${cache}`;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const failed = (output.results ?? []).filter((r: any) => !r.ok).map((r: any) => r.name);
-    const detail = failed.length ? ` · trượt: ${failed.join(', ')}` : '';
-    return `${clip(`${output.passed}/${output.total} test đạt${detail}`)} · ${cache}`;
-  }
-  return clip(JSON.stringify(output) ?? 'undefined');
+// Màu cho terminal; nội dung tóm tắt lấy từ hàm dùng chung với web.
+function describeOutput(name: string, output: unknown): string {
+  const { text, tone, cache } = summarizeToolOutput(name, output);
+  const colored = tone === 'error' ? pc.red(text) : text;
+  if (!cache) return colored;
+  return `${colored} · ${cache.hit ? pc.green(cache.label) : cache.label}`;
 }
 
 function tokens(u: Usage): string {

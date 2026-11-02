@@ -4,6 +4,7 @@ import type { ApprovalStatus, HarnessEvent, StateSnapshot, Turn } from './events
 
 export function emptySnapshot(model: string, maxSteps: number): StateSnapshot {
   return {
+    seq: 0,
     turns: [],
     busy: false,
     busyKind: null,

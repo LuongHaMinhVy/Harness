@@ -3,7 +3,7 @@ import { serveStatic } from '@hono/node-server/serve-static';
 import { Hono, type Context } from 'hono';
 import { streamSSE } from 'hono/streaming';
 import type { z } from 'zod';
-import { ApproveBody, AskBody, SettingsBody } from '../shared/events.js';
+import { ApproveBody, AskBody, SettingsBody, type EventEnvelope } from '../shared/events.js';
 import { securityMiddleware } from './security.js';
 import type { WebSession } from './webSession.js';
 
@@ -34,8 +34,9 @@ export function createApp(d: AppDeps) {
 
   app.get('/api/events', (c) =>
     streamSSE(c, async (stream) => {
-      const unsubscribe = session.subscribe((e) => {
-        void stream.writeSSE({ data: JSON.stringify(e) });
+      const unsubscribe = session.subscribe((event, seq) => {
+        const envelope: EventEnvelope = { seq, event };
+        void stream.writeSSE({ data: JSON.stringify(envelope) });
       });
       stream.onAbort(() => {
         unsubscribe();

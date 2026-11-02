@@ -119,3 +119,14 @@ test('runEval phát eval-row và eval-done, ghi vào file điểm eval, không �
   expect(JSON.parse(readFileSync(join(dir, 'grades-eval.json'), 'utf8'))).toHaveLength(1);
   expect(session.grades()).toEqual([]);
 });
+
+test('mỗi sự kiện có seq tăng dần; snapshot.seq bằng seq của sự kiện cuối', async () => {
+  const { session } = setup([{ text: 'chào' }]);
+  const seqs: number[] = [];
+  session.subscribe((_e, seq) => seqs.push(seq));
+  session.ask('xin chào');
+  await session.idle();
+  expect(seqs).toEqual([...seqs].sort((a, b) => a - b));
+  expect(new Set(seqs).size).toBe(seqs.length);
+  expect(session.snapshot().seq).toBe(seqs.at(-1));
+});
