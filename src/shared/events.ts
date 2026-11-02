@@ -1,8 +1,9 @@
 // Kiểu dữ liệu dùng chung giữa server (src/web) và giao diện (web/src).
 // File này chỉ chứa type và schema zod, không phụ thuộc Node hay DOM.
 import { z } from 'zod';
-import type { EvalReport, EvalRow, StepLog, Usage } from './types.js';
+import { MAX_QUESTION_CHARS, type EvalReport, type EvalRow, type StepLog, type Usage } from './types.js';
 
+export { MAX_QUESTION_CHARS };
 export type { EvalReport, EvalRow, StepLog, Usage };
 
 export type SessionTotal = Usage & { costUsd: number; questions: number };
@@ -68,7 +69,6 @@ export type HarnessEvent =
 /** Gói gửi qua SSE: seq tăng dần để giao diện bỏ qua sự kiện đã có trong snapshot. */
 export type EventEnvelope = { seq: number; event: HarnessEvent };
 
-export const MAX_QUESTION_CHARS = 2000;
 
 export const AskBody = z.object({ question: z.string().trim().min(1).max(MAX_QUESTION_CHARS) });
 export const ApproveBody = z.object({ id: z.uuid(), approved: z.boolean() });

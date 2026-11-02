@@ -4,3 +4,4 @@ logs/
 .cache/
 data/grades-eval.json
 .superpowers/
+web/dist/

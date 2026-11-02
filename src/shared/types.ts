@@ -1,5 +1,8 @@
 // Kiểu dữ liệu cốt lõi dùng chung cho phần lõi (Node) và giao diện web — không phụ thuộc Node hay DOM.
 
+/** Độ dài tối đa của một câu hỏi gửi lên web. */
+export const MAX_QUESTION_CHARS = 2000;
+
 export type Usage = { input: number; cached: number | null; output: number };
 
 export type StepLog = {
