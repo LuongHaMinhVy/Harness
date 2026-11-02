@@ -85,6 +85,18 @@ test('describeApiError gỡ RetryError ra lỗi 429 bên trong', () => {
   expect(describeApiError(err)).toContain('giới hạn tốc độ');
 });
 
+test('describeApiError hết quota trong ngày → báo rõ, không bảo "đợi 30s"', () => {
+  const err = new APICallError({
+    message: 'You exceeded your current quota.',
+    url: 'x',
+    requestBodyValues: {},
+    statusCode: 429,
+    responseBody: '{"error":{"details":[{"violations":[{"quotaId":"GenerateRequestsPerDayPerProjectPerModel-FreeTier"}]}]}}',
+  });
+  expect(describeApiError(err)).toMatch(/trong ngày/);
+  expect(describeApiError(err)).not.toMatch(/30s/);
+});
+
 test('describeApiError mạng → "Không kết nối được tới Gemini"', () => {
   expect(describeApiError(new TypeError('fetch failed'))).toContain('Không kết nối được tới Gemini');
 });

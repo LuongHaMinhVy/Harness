@@ -9,6 +9,10 @@ export type RunOptions = {
   tools: ToolSet;
   maxSteps: number;
   maxRetries?: number;
+  /** Trần độ dài mỗi lần trả lời (gồm thinking token) — phanh khi model sinh mãi không dừng. */
+  maxOutputTokens?: number;
+  /** Trần thời gian cả câu hỏi; hết giờ thì huỷ và báo lỗi. */
+  timeoutMs?: number;
   onStep?: (s: StepLog) => void;
 };
 
@@ -19,6 +23,10 @@ export type RunOutcome = {
   hitLimit: boolean;
   totalMs: number;
 };
+
+// Đo thật trên Gemini 2.5 Flash: một lượt dùng vài chục đến vài trăm token output (kể cả thinking); 4.096 là dư nhiều.
+const MAX_OUTPUT_TOKENS = 4096;
+const TIMEOUT_MS = 120_000;
 
 const errorMessage = (error: unknown) => (error instanceof Error ? error.message : String(error)).slice(0, 300);
 
@@ -39,6 +47,7 @@ function toStepLog(step: StepResult<ToolSet>, ms: number): StepLog {
     text: step.text || undefined,
     finishReason: step.finishReason,
     usage: usageOf(step.usage, step.providerMetadata),
+    rawUsage: (step.usage as { raw?: unknown }).raw,
     ms,
   };
 }
@@ -57,8 +66,12 @@ export async function runQuestion(o: RunOptions): Promise<RunOutcome> {
     tools: o.tools,
     maxRetries: o.maxRetries ?? 2,
     stopWhen: stepCountIs(o.maxSteps),
-    prepareStep: ({ stepNumber }) =>
-      stepNumber === o.maxSteps - 1 ? { toolChoice: 'none', instructions: `${o.system}\n\n${LAST_STEP_NOTE}` } : {},
+    maxOutputTokens: o.maxOutputTokens ?? MAX_OUTPUT_TOKENS,
+    timeout: { totalMs: o.timeoutMs ?? TIMEOUT_MS },
+    // Lượt cuối: cấm gọi tool và nhắc trả lời. Giữ nguyên system + bộ tool (đổi là lệch prefix → mất prompt cache),
+    // lời nhắc nối vào CUỐI messages.
+    prepareStep: ({ stepNumber, messages }) =>
+      stepNumber === o.maxSteps - 1 ? { toolChoice: 'none', messages: [...messages, { role: 'user', content: LAST_STEP_NOTE }] } : {},
     onStepEnd: (step) => {
       const now = Date.now();
       const log = toStepLog(step, now - last);

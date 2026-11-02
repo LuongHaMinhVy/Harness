@@ -20,7 +20,8 @@ export function usageOf(usage: unknown, providerMetadata?: unknown): Usage {
     u.cachedInputTokens ??
     meta.google?.usageMetadata?.cachedContentTokenCount ??
     null;
-  return { input: u.inputTokens ?? 0, cached, output: u.outputTokens ?? 0 };
+  const reasoning = u.outputTokenDetails?.reasoningTokens ?? u.reasoningTokens;
+  return { input: u.inputTokens ?? 0, cached, output: u.outputTokens ?? 0, ...(typeof reasoning === 'number' ? { reasoning } : {}) };
 }
 
 // Màu cho terminal; nội dung tóm tắt lấy từ hàm dùng chung với web.
@@ -33,7 +34,8 @@ function describeOutput(name: string, output: unknown): string {
 
 function tokens(u: Usage): string {
   const cache = u.cached === null ? 'cache n/a' : `cache ${u.cached} · ${u.input ? Math.round((u.cached / u.input) * 100) : 0}%`;
-  return pc.dim(`tok in ${u.input.toLocaleString('en-US')} (${cache}) · out ${u.output}`);
+  const thinking = u.reasoning ? ` (thinking ${u.reasoning})` : '';
+  return pc.dim(`tok in ${u.input.toLocaleString('en-US')} (${cache}) · out ${u.output}${thinking}`);
 }
 
 export function formatStep(s: StepLog): string {

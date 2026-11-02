@@ -6,6 +6,7 @@ import pc from 'picocolors';
 import { autoApprove } from '@harness/core/approval';
 import { createEvalAsk, runEval, type Golden } from '@harness/core/eval';
 import { createLogger } from '@harness/core/logger';
+import { withRateLimitRetry } from '@harness/core/rateLimit';
 import { buildSystemPrompt } from '@harness/core/prompt';
 import { createTestCache } from '@harness/core/toolCache';
 import { createTools } from '@harness/core/tools';
@@ -19,7 +20,9 @@ async function main() {
   const modelId = process.env.MODEL ?? 'gemini-2.5-flash';
   const maxSteps = Number(process.env.MAX_STEPS ?? 6);
   const ask = createEvalAsk({
-    model: google(modelId),
+    model: withRateLimitRetry(google(modelId), {
+      onWait: (ms) => console.log(pc.yellow(`⏳ Gemini giới hạn tốc độ (free tier) — đợi ${Math.round(ms / 1000)}s rồi gọi lại…`)),
+    }),
     system: buildSystemPrompt('data'),
     tools: createTools({
       dataDir: 'data',

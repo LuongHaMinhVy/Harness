@@ -3,7 +3,8 @@
 /** Độ dài tối đa của một câu hỏi gửi lên web. */
 export const MAX_QUESTION_CHARS = 2000;
 
-export type Usage = { input: number; cached: number | null; output: number };
+/** output đã gồm thinking token (tính giá như output); reasoning là phần thinking trong đó, nếu provider báo. */
+export type Usage = { input: number; cached: number | null; output: number; reasoning?: number };
 
 export type StepLog = {
   index: number;
@@ -11,6 +12,8 @@ export type StepLog = {
   text?: string;
   finishReason: string;
   usage: Usage;
+  /** Khối usage gốc của provider: SDK có thể bỏ sót trường (vd. cache) khi đổi provider. */
+  rawUsage?: unknown;
   ms: number;
 };
 

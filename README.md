@@ -112,7 +112,10 @@ Bài `sum-array` (`data/assignments/sum-array/`) và 5 bài nộp (`data/submiss
 ## Về cache và chi phí
 
 - Free tier của Gemini trả $0. Log hiển thị **chi phí quy đổi** theo giá trả phí của Gemini 2.5 Flash (tra ngày 2026-11-02, xem `packages/core/src/pricing.ts`).
-- Trang giá của Google ghi context caching "Not available" ở free tier; khi đó bằng chứng cache hit là dòng `CACHE HIT` của `run_tests`.
+- **Prompt cache của Gemini có chạy ở free tier** (implicit caching, đo ngày 2026-11-02): phần đầu prompt (system prompt + đề + rubric + tool, ~1.300 token) trùng giữa các lượt nên từ lượt 2–3 trở đi log hiện `cache 736 · 49%`, `cache 1484 · 90%`. Vì vậy prompt không chèn giờ hay giá trị thay đổi, và lượt cuối nối lời nhắc vào **cuối** messages thay vì sửa system prompt. Lớp cache thứ hai là `CACHE HIT` của `run_tests`.
+- Log tách **thinking token** (`out 499 (thinking 424)`) — Gemini 2.5 Flash tính thinking như output — và file `logs/*.jsonl` lưu nguyên khối usage gốc của provider.
+- **Giới hạn free tier** (`gemini-2.5-flash`, đo ngày 2026-11-02): **20 lần gọi model mỗi ngày**, reset khoảng 15:00 giờ Việt Nam; một câu "Chấm bài của X" tốn ~5 lần gọi. Bị chặn theo phút thì harness tự chờ đúng thời gian Gemini yêu cầu rồi gọi lại lượt đó (`⏳ … đợi 15s`); hết quota ngày thì báo rõ, không treo.
+- Phanh của mỗi câu hỏi: tối đa N lượt (`MAX_STEPS`, `/steps N`), 4.096 token output mỗi lượt, 120 giây cả câu, 3 giây mỗi lần chạy test.
 
 ## Kịch bản demo (≤ 5 phút)
 

@@ -5,6 +5,7 @@ import pc from 'picocolors';
 import { runQuestion } from '@harness/core/agent';
 import { createConsoleApprover } from '@harness/core/approval';
 import { createLogger } from '@harness/core/logger';
+import { withRateLimitRetry } from '@harness/core/rateLimit';
 import { buildSystemPrompt } from '@harness/core/prompt';
 import { createSession } from '@harness/core/session';
 import { createTestCache } from '@harness/core/toolCache';
@@ -33,6 +34,11 @@ const tools = createTools({
 const system = buildSystemPrompt(DATA_DIR);
 let questionNo = 0;
 
+// Gói miễn phí giới hạn số lần gọi mỗi phút: bị chặn thì chờ đúng thời gian Gemini yêu cầu rồi gọi lại lượt đó.
+const model = withRateLimitRetry(google(modelId), {
+  onWait: (ms) => console.log(pc.yellow(`         ⏳ Gemini giới hạn tốc độ (free tier) — đợi ${Math.round(ms / 1000)}s rồi gọi lại lượt này…`)),
+});
+
 const session = createSession({
   maxSteps,
   print: (s) => console.log(s),
@@ -44,7 +50,7 @@ const session = createSession({
   run: async (history, steps) => {
     const last = history.at(-1);
     logger.startQuestion(++questionNo, typeof last?.content === 'string' ? last.content : '');
-    const outcome = await runQuestion({ model: google(modelId), system, history, tools, maxSteps: steps, onStep: logger.step });
+    const outcome = await runQuestion({ model, system, history, tools, maxSteps: steps, onStep: logger.step });
     logger.endQuestion(outcome.steps, outcome.totalMs, outcome.hitLimit, steps);
     return outcome;
   },

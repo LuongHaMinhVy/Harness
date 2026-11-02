@@ -51,12 +51,37 @@ test('maxSteps=3: 3 lượt, lượt cuối toolChoice none, hitLimit true, text
   expect(r.text).toBe('xong');
 });
 
-test('lượt cuối gửi kèm LAST_STEP_NOTE trong system', async () => {
+test('lượt cuối: system và bộ tool giữ nguyên (để trúng prompt cache), lời nhắc LAST_STEP_NOTE nối vào cuối messages', async () => {
   const { model } = stubbornModel();
   await runQuestion({ ...base, model, maxSteps: 2 });
-  const lastPrompt = JSON.stringify(model.doGenerateCalls.at(-1)!.prompt);
-  expect(lastPrompt).toContain(LAST_STEP_NOTE);
-  expect(JSON.stringify(model.doGenerateCalls[0].prompt)).not.toContain(LAST_STEP_NOTE);
+  const [first, last] = [model.doGenerateCalls[0], model.doGenerateCalls.at(-1)!];
+  expect(last.prompt[0]).toEqual(first.prompt[0]);
+  expect(last.tools).toEqual(first.tools);
+  expect(JSON.stringify(last.prompt.at(-1))).toContain(LAST_STEP_NOTE);
+  expect(last.prompt.at(-1)!.role).toBe('user');
+  expect(JSON.stringify(first.prompt)).not.toContain(LAST_STEP_NOTE);
+});
+
+test('mỗi lần gọi model đều có giới hạn độ dài trả lời (maxOutputTokens)', async () => {
+  const { model } = stubbornModel();
+  await runQuestion({ ...base, model, maxSteps: 2 });
+  for (const call of model.doGenerateCalls) expect(call.maxOutputTokens).toBeGreaterThan(0);
+});
+
+test('StepLog tách thinking token và giữ nguyên usage gốc của provider', async () => {
+  const model = new MockLanguageModelV4({
+    doGenerate: async () => ({
+      ...answer('ok'),
+      usage: {
+        inputTokens: { total: 100, noCache: 20, cacheRead: 80, cacheWrite: undefined },
+        outputTokens: { total: 70, text: 13, reasoning: 57 },
+        raw: { thoughtsTokenCount: 57, cachedContentTokenCount: 80 },
+      },
+    }),
+  });
+  const r = await runQuestion({ ...base, model, maxSteps: 2 });
+  expect(r.steps[0].usage).toMatchObject({ input: 100, cached: 80, output: 70, reasoning: 57 });
+  expect(r.steps[0].rawUsage).toEqual({ thoughtsTokenCount: 57, cachedContentTokenCount: 80 });
 });
 
 test('model trả lời ngay ở lượt 1 → 1 lượt, hitLimit false', async () => {

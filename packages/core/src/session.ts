@@ -1,6 +1,7 @@
 import type { ModelMessage } from 'ai';
 import pc from 'picocolors';
 import type { RunOutcome } from './agent.js';
+import { isDailyQuota } from './rateLimit.js';
 
 export type SessionDeps = {
   run: (history: ModelMessage[], maxSteps: number) => Promise<RunOutcome>;
@@ -12,10 +13,16 @@ export type SessionDeps = {
 const HELP = 'Lệnh: /steps N (đổi giới hạn lượt, 1–20) · /reset (xoá lịch sử) · /cost (tổng chi phí) · /exit';
 
 // Lấy lỗi gốc: RetryError của SDK bọc lỗi cuối cùng trong lastError.
-function rootError(e: unknown): { status?: number; message: string } {
+function rootErrorObject(e: unknown): unknown {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let err = e as any;
   while (err?.lastError) err = err.lastError;
+  return err;
+}
+
+function rootError(e: unknown): { status?: number; message: string } {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const err = rootErrorObject(e) as any;
   const status = err?.statusCode;
   const message = [err?.message, err?.cause?.message, err?.cause?.code].filter(Boolean).join(' ');
   return { status, message: message || String(e) };
@@ -28,8 +35,11 @@ export function isRateLimit(e: unknown): boolean {
 
 export function describeApiError(e: unknown): string {
   const { status, message } = rootError(e);
+  if (isDailyQuota(rootErrorObject(e))) {
+    return 'Đã hết quota miễn phí trong ngày của Gemini — thử lại vào ngày mai, hoặc đổi MODEL/API key trong .env.';
+  }
   if (isRateLimit(e)) {
-    return 'Gemini đang giới hạn tốc độ (free tier) — đợi ~30s rồi hỏi lại.';
+    return 'Gemini vẫn đang giới hạn tốc độ (free tier) sau khi đã chờ — đợi khoảng 1 phút rồi hỏi lại.';
   }
   if (status === 401 || status === 403 || /api.?key/i.test(message) || (status === 400 && /key/i.test(message))) {
     return 'API key không hợp lệ hoặc thiếu — kiểm tra GOOGLE_GENERATIVE_AI_API_KEY trong .env.';

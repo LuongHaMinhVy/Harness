@@ -5,7 +5,8 @@ export const num = (n: number) => n.toLocaleString('en-US');
 
 export function tokens(u: Usage): string {
   const cache = u.cached === null ? 'cache n/a' : `cache ${num(u.cached)} · ${u.input ? Math.round((u.cached / u.input) * 100) : 0}%`;
-  return `in ${num(u.input)} (${cache}) · out ${num(u.output)}`;
+  const thinking = u.reasoning ? ` (thinking ${num(u.reasoning)})` : '';
+  return `in ${num(u.input)} (${cache}) · out ${num(u.output)}${thinking}`;
 }
 
 export const json = (v: unknown) => JSON.stringify(v, null, 2) ?? 'undefined';
