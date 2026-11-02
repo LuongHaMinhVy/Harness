@@ -1,2 +1,0 @@
-npm notice run npx
-npm notice run hyperframes transcribe assets/voice/test.wav --engine whisper --model small --language vi --runtime-install --json
